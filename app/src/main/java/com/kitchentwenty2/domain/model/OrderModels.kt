@@ -1,5 +1,7 @@
 package com.kitchentwenty2.domain.model
 
+import com.kitchentwenty2.util.DateTimeUtils
+
 data class CustomerProfile(
     val customerId: Long,
     val name: String,
@@ -27,7 +29,7 @@ data class PaymentRecord(
 data class OrderFormState(
     val isEditMode: Boolean = false,
     val orderId: Long = 104,
-    val orderDate: String = "07/09/2026",
+    val orderDate: String = DateTimeUtils.formatDate(System.currentTimeMillis()),
     val customerName: String = "",
     val mobileNumber: String = "",
     val address: String = "",
@@ -44,7 +46,7 @@ data class OrderFormState(
 data class OrderDetailUiState(
     val orderId: Long = 104,
     val status: OrderStatus = OrderStatus.PARTIALLY_PAID,
-    val orderDate: String = "07/09/2026",
+    val orderDate: String = DateTimeUtils.formatDate(System.currentTimeMillis()),
     val isTodayOrPast: Boolean = true,
     val customerName: String = "Jane Doe",
     val customerPhone: String = "+91 98765 43210",

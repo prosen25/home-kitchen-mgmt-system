@@ -1,5 +1,9 @@
 package com.kitchentwenty2.domain.model
 
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
 data class ExpenseCategoryItem(
     val id: String,
     val name: String,
@@ -14,7 +18,7 @@ val ExpenseCategories = listOf(
 )
 
 data class ExpenseFormState(
-    val date: String = "07/09/2026",
+    val date: String = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()),
     val category: String = "Groceries",
     val amount: String = "",
     val notes: String = ""

@@ -74,7 +74,14 @@ fun DashboardScreen(
     onNewOrderClick: () -> Unit = {},
     onNewExpenseClick: () -> Unit = {},
     onNavigate: (DashboardNavigationItem) -> Unit = {},
+    onPreviousDayClick: () -> Unit = {},
+    onNextDayClick: () -> Unit = {},
     onDateSelected: (Long?) -> Unit = {},
+    // New callbacks for expense actions
+    onExpenseEdit: (Long) -> Unit = {},
+    onExpenseDelete: (Long) -> Unit = {},
+    // New callback for order edit
+    onOrderEdit: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // Local interactive UI states for previewing and testing interactions
@@ -92,8 +99,8 @@ fun DashboardScreen(
         topBar = {
             TopBarDateSelector(
                 currentDateDisplay = uiState.displayDate,
-                onPreviousDayClick = { /* Placeholder for day decrement */ },
-                onNextDayClick = { /* Placeholder for day increment */ },
+                onPreviousDayClick = onPreviousDayClick,
+                onNextDayClick = onNextDayClick,
                 onDateClick = { showDatePickerDialog = true }
             )
         },
@@ -253,7 +260,8 @@ fun DashboardScreen(
                                     onOrderClick = onOrderClick,
                                     onDialClick = onDialCustomer,
                                     onMapsClick = onOpenMaps,
-                                    onShareLocationClick = onShareLocation
+                                    onShareLocationClick = onShareLocation,
+                                    onEdit = { id -> onOrderEdit(id) }
                                 )
                             }
                         }
@@ -276,7 +284,10 @@ fun DashboardScreen(
                                 items = uiState.expenses,
                                 key = { it.expenseId }
                             ) { expense ->
-                                ExpenseCard(expense = expense)
+                                ExpenseCard(expense = expense,
+                                    onEdit = { onExpenseEdit(expense.expenseId) },
+                                    onDelete = { onExpenseDelete(expense.expenseId) }
+                                )
                             }
                         }
                     }

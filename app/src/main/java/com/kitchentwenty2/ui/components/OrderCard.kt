@@ -21,8 +21,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -59,6 +62,7 @@ fun OrderCard(
     onDialClick: (String) -> Unit,
     onMapsClick: (String?) -> Unit,
     onShareLocationClick: (OrderSummaryItem) -> Unit,
+    onEdit: ((Long) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -135,8 +139,16 @@ fun OrderCard(
                     }
                 }
 
-                // Status Badge
-                OrderStatusBadge(status = order.status)
+                // Status Badge + Edit
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OrderStatusBadge(status = order.status)
+                    if (onEdit != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(onClick = { onEdit(order.orderId) }) {
+                            Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit Order")
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))

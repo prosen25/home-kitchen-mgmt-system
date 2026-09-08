@@ -1,8 +1,17 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.ksp)
     alias(libs.plugins.hilt.android)
+}
+
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+require(keystorePropertiesFile.exists()) { "Missing keystore.properties file for release signing" }
+val keystoreProperties = Properties().apply {
+    FileInputStream(keystorePropertiesFile).use { load(it) }
 }
 
 android {
@@ -22,6 +31,28 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                storeFile = rootProject.file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+
     buildFeatures {
         compose = true
     }
@@ -38,6 +69,23 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+}
+
+afterEvaluate {
+    tasks.findByName("assembleRelease")?.doLast {
+        val releaseDir = layout.buildDirectory.dir("outputs/apk/release").get().asFile
+        val sourceApk = releaseDir.listFiles()?.firstOrNull { it.name.endsWith(".apk") }
+        if (sourceApk != null) {
+            val renamedApk = File(releaseDir, "Kitchen Twenty2 POS.apk")
+            if (renamedApk.exists()) renamedApk.delete()
+            sourceApk.renameTo(renamedApk)
+        }
+    }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {
@@ -67,6 +115,9 @@ dependencies {
 
     // Asynchronous Flow / Coroutines
     implementation(libs.kotlinx.coroutines.android)
+
+    // Testing
+    testImplementation("junit:junit:4.13.2")
 
     // Debugging Tools
     debugImplementation(libs.androidx.ui.tooling)

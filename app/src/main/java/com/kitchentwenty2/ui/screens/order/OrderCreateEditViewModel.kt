@@ -39,7 +39,8 @@ class OrderCreateEditViewModel @Inject constructor(
         OrderFormState(
             isEditMode = orderIdToEdit != null,
             orderId = orderIdToEdit ?: 0L,
-            orderDate = DateTimeUtils.formatDate(System.currentTimeMillis())
+            orderDate = savedStateHandle.get<Long>("defaultDateMillis")?.let { DateTimeUtils.formatDate(it) }
+                ?: DateTimeUtils.formatDate(System.currentTimeMillis())
         )
     )
     val formState: StateFlow<OrderFormState> = _formState.asStateFlow()
@@ -179,14 +180,32 @@ class OrderCreateEditViewModel @Inject constructor(
         _formState.update { it.copy(advancePayment = advance) }
     }
 
+    fun validateOrderForSave(state: OrderFormState): String? {
+        val trimmedName = state.customerName.trim()
+        if (trimmedName.isBlank()) return "Customer name is required."
+        if (state.items.isEmpty()) return "Add at least one order item."
+        if (state.items.any { it.itemName.isBlank() || it.quantity <= 0 || it.unitPrice <= 0.0 }) {
+            return "Each item must have a valid name and a positive price."
+        }
+        if (state.upfrontDiscount < 0.0 || state.upfrontDiscount > state.subtotal) {
+            return "Discount must be between 0 and the subtotal."
+        }
+        if (state.advancePayment < 0.0 || state.advancePayment > state.netTotal) {
+            return "Advance payment must be between 0 and the net total."
+        }
+        return null
+    }
+
     fun saveOrder(onSuccess: (Long) -> Unit) {
         viewModelScope.launch {
             val currentState = _formState.value
-            if (currentState.customerName.isNotBlank() && currentState.items.isNotEmpty()) {
-                val resultId = orderRepository.saveOrder(currentState)
-                if (resultId > 0) {
-                    onSuccess(resultId)
-                }
+            if (validateOrderForSave(currentState) != null) {
+                return@launch
+            }
+
+            val resultId = orderRepository.saveOrder(currentState)
+            if (resultId > 0) {
+                onSuccess(resultId)
             }
         }
     }

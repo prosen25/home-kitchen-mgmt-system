@@ -33,4 +33,24 @@ class ExpenseEntryViewModel @Inject constructor(
             }
         }
     }
+
+    // New: expose getExpenseById for edit flow
+    suspend fun getExpenseById(expenseId: Long) = expenseRepository.getExpenseById(expenseId)
+
+    // New: update existing expense
+    fun updateExpense(
+        dateMillis: Long,
+        category: String,
+        amount: Double,
+        notes: String?,
+        expenseId: Long,
+        onSuccess: () -> Unit
+    ) {
+        viewModelScope.launch {
+            if (amount >= 0) {
+                val ok = expenseRepository.updateExpense(expenseId, dateMillis, category, amount, notes)
+                if (ok) onSuccess()
+            }
+        }
+    }
 }

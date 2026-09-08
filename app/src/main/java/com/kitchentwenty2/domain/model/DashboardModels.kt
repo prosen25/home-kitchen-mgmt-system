@@ -32,6 +32,7 @@ data class ExpenseSummaryItem(
     val category: String, // Groceries, Packaging, Gas, Other
     val amount: Double,
     val note: String,
+    val expenseDateMillis: Long = System.currentTimeMillis(),
     val timeFormatted: String = ""
 )
 
@@ -114,6 +115,7 @@ data class DashboardUiState(
             category = "Groceries",
             amount = 850.0,
             note = "Basmati rice (10kg) and whole spices",
+            expenseDateMillis = System.currentTimeMillis(),
             timeFormatted = "09:30 AM"
         ),
         ExpenseSummaryItem(
@@ -121,6 +123,7 @@ data class DashboardUiState(
             category = "Packaging",
             amount = 350.0,
             note = "50x 750ml meal containers & carry bags",
+            expenseDateMillis = System.currentTimeMillis(),
             timeFormatted = "11:15 AM"
         ),
         ExpenseSummaryItem(
@@ -128,6 +131,7 @@ data class DashboardUiState(
             category = "Gas",
             amount = 280.0,
             note = "Commercial gas cylinder refill share",
+            expenseDateMillis = System.currentTimeMillis(),
             timeFormatted = "02:00 PM"
         )
     ),

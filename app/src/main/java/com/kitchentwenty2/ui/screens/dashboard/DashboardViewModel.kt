@@ -12,6 +12,7 @@ import com.kitchentwenty2.util.DateTimeUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -83,5 +84,16 @@ class DashboardViewModel @Inject constructor(
 
     fun selectNavigation(nav: DashboardNavigationItem) {
         _selectedNav.value = nav
+    }
+
+    // New: expose delete expense action to UI
+    fun deleteExpense(expenseId: Long) {
+        viewModelScope.launch {
+            try {
+                expenseRepository.deleteExpense(expenseId)
+            } catch (_: Exception) {
+                // ignore, AppErrorLogger handled in repository
+            }
+        }
     }
 }

@@ -77,17 +77,28 @@ import java.util.Locale
 fun ExpenseEntryScreen(
     onDismiss: () -> Unit = {},
     onSaveSuccess: (date: String, category: String, amount: Double, notes: String) -> Unit = { _, _, _, _ -> },
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Optional initial values for edit mode
+    initialExpenseId: Long? = null,
+    initialDateMillis: Long? = null,
+    initialCategory: String? = null,
+    initialAmount: Double? = null,
+    initialNotes: String? = null
 ) {
-    var expenseDate by remember { mutableStateOf("07/09/2026") }
+    var expenseDate by remember {
+        mutableStateOf(
+            initialDateMillis?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(it)) }
+                ?: SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+        )
+    }
     var showDatePicker by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialDateMillis ?: System.currentTimeMillis())
 
-    var selectedCategory by remember { mutableStateOf("Groceries") }
+    var selectedCategory by remember { mutableStateOf(initialCategory ?: "Groceries") }
     var isCategoryDropdownOpen by remember { mutableStateOf(false) }
 
-    var amountInput by remember { mutableStateOf("") }
-    var notesInput by remember { mutableStateOf("") }
+    var amountInput by remember { mutableStateOf(initialAmount?.toString() ?: "") }
+    var notesInput by remember { mutableStateOf(initialNotes ?: "") }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),

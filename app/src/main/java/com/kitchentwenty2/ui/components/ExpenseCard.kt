@@ -15,9 +15,12 @@ import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -35,7 +38,9 @@ import com.kitchentwenty2.ui.theme.ExpenseRedOnContainer
 @Composable
 fun ExpenseCard(
     expense: ExpenseSummaryItem,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onEdit: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null
 ) {
     val categoryIcon: ImageVector = when (expense.category.lowercase()) {
         "groceries" -> Icons.Default.ShoppingCart
@@ -115,13 +120,39 @@ fun ExpenseCard(
                 }
             }
 
-            // Expense Amount in INR
-            Text(
-                text = "-${formatCurrency(expense.amount)}",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = ExpenseRed
-            )
+            // Expense Amount + Actions
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "-${formatCurrency(expense.amount)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = ExpenseRed
+                )
+
+                if (onEdit != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable { onEdit() }
+                    )
+                }
+
+                if (onDelete != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable { onDelete() }
+                    )
+                }
+            }
         }
     }
 }

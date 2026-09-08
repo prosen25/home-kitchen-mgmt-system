@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -61,6 +62,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -83,6 +85,7 @@ import com.kitchentwenty2.ui.theme.KitchenTwenty2Theme
 import com.kitchentwenty2.ui.theme.OrangePrimary
 import com.kitchentwenty2.ui.theme.RevenueGreen
 import com.kitchentwenty2.ui.theme.StatusUnpaid
+import com.kitchentwenty2.util.DateTimeUtils
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -105,7 +108,13 @@ fun OrderCreateEditScreen(
 
     // Form fields state
     var showDatePicker by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = DateTimeUtils.parseDate(formState.orderDate)
+    )
+
+    LaunchedEffect(formState.orderDate) {
+        datePickerState.selectedDateMillis = DateTimeUtils.parseDate(formState.orderDate)
+    }
 
     // Autocomplete dropdown state
     var isAutoCompleteExpanded by remember { mutableStateOf(false) }
@@ -270,6 +279,7 @@ fun OrderCreateEditScreen(
                             leadingIcon = {
                                 Icon(imageVector = Icons.Default.Person, contentDescription = null, tint = OrangePrimary)
                             },
+                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(10.dp)
@@ -767,5 +777,5 @@ fun OrderCreateEditScreenPreview() {
 }
 
 private fun Double.toInputString(): String =
-    if (this == 0.0) "0" else toString()
+    if (this == 0.0) "" else toString()
 

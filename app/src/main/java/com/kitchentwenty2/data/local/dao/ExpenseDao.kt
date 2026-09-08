@@ -22,6 +22,12 @@ interface ExpenseDao {
     @Delete
     suspend fun deleteExpense(expense: ExpenseEntity)
 
+    @Query("DELETE FROM expenses WHERE expenseId = :expenseId")
+    suspend fun deleteExpenseById(expenseId: Long)
+
+    @Query("SELECT * FROM expenses WHERE expenseId = :expenseId LIMIT 1")
+    suspend fun getExpenseById(expenseId: Long): ExpenseEntity?
+
     @Query("SELECT COUNT(*) FROM expenses")
     suspend fun getExpenseCount(): Int
 }

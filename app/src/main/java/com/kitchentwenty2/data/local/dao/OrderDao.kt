@@ -73,12 +73,15 @@ interface OrderDao {
     @Query("SELECT * FROM payment_logs WHERE orderId = :orderId ORDER BY paymentDate ASC")
     fun getPaymentLogsForOrder(orderId: Long): Flow<List<PaymentLogEntity>>
 
+    @Query("UPDATE payment_logs SET paymentDate = :newDate WHERE orderId = :orderId AND paymentType = :paymentType")
+    suspend fun updatePaymentDateForType(orderId: Long, paymentType: String, newDate: Long)
+
     @Query("""
         SELECT 
-            COALESCE(SUM(totalCollected), 0.0) as totalCollected,
-            COALESCE(SUM(refundedAmount), 0.0) as totalRefunded
-        FROM orders 
-        WHERE orderDate >= :startOfDay AND orderDate <= :endOfDay
+            COALESCE(SUM(CASE WHEN paymentType = 'REFUND' THEN 0.0 ELSE amount END), 0.0) as totalCollected,
+            COALESCE(SUM(CASE WHEN paymentType = 'REFUND' THEN amount ELSE 0.0 END), 0.0) as totalRefunded
+        FROM payment_logs
+        WHERE paymentDate >= :startOfDay AND paymentDate <= :endOfDay
     """)
     fun getDailyRevenueTotals(startOfDay: Long, endOfDay: Long): Flow<DailyRevenueCalculation>
 

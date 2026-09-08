@@ -65,9 +65,45 @@ class ExpenseRepositoryImpl @Inject constructor(
     override suspend fun deleteExpense(expenseId: Long) {
         withContext(Dispatchers.IO) {
             try {
-                // Delete expense directly if needed
+                expenseDao.deleteExpenseById(expenseId)
             } catch (e: Exception) {
                 errorLogger.logException(e, "ExpenseRepository.deleteExpense")
+            }
+        }
+    }
+
+    override suspend fun getExpenseById(expenseId: Long): ExpenseSummaryItem? {
+        return withContext(Dispatchers.IO) {
+            try {
+                expenseDao.getExpenseById(expenseId)?.let { it.toDomain() }
+            } catch (e: Exception) {
+                errorLogger.logException(e, "ExpenseRepository.getExpenseById")
+                null
+            }
+        }
+    }
+
+    override suspend fun updateExpense(expenseId: Long, dateMillis: Long, category: String, amount: Double, notes: String?): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val existing = expenseDao.getExpenseById(expenseId)
+                if (existing == null) return@withContext false
+
+                val updated = ExpenseEntity(
+                    expenseId = existing.expenseId,
+                    expenseDate = dateMillis,
+                    category = category,
+                    amount = amount,
+                    notes = notes,
+                    createdBy = existing.createdBy,
+                    createdDateTimeStamp = existing.createdDateTimeStamp,
+                    modifiedDateTimeStamp = System.currentTimeMillis()
+                )
+                val res = expenseDao.insertExpense(updated)
+                res > 0
+            } catch (e: Exception) {
+                errorLogger.logException(e, "ExpenseRepository.updateExpense")
+                false
             }
         }
     }
@@ -79,6 +115,7 @@ class ExpenseRepositoryImpl @Inject constructor(
             category = category,
             amount = amount,
             note = notes ?: "",
+            expenseDateMillis = expenseDate,
             timeFormatted = timeFormat.format(Date(createdDateTimeStamp))
         )
     }

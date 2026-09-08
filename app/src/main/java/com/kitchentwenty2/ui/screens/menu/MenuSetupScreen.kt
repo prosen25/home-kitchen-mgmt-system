@@ -42,7 +42,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -55,7 +54,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kitchentwenty2.domain.model.MenuItemModel
-import com.kitchentwenty2.domain.model.SampleMenuItems
 import com.kitchentwenty2.ui.components.formatCurrency
 import com.kitchentwenty2.ui.theme.KitchenTwenty2Theme
 import com.kitchentwenty2.ui.theme.OrangePrimary
@@ -63,14 +61,14 @@ import com.kitchentwenty2.ui.theme.OrangePrimary
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MenuSetupScreen(
+    menuItems: List<MenuItemModel> = emptyList(),
+    onAddMenuItem: (String, Double) -> Unit = { _, _ -> },
+    onUpdateMenuItem: (MenuItemModel) -> Unit = {},
+    onDeleteMenuItem: (Long) -> Unit = {},
     onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val menuList = remember {
-        mutableStateListOf<MenuItemModel>().apply {
-            addAll(SampleMenuItems)
-        }
-    }
+    val menuList = menuItems
 
     // Add New Item input state
     var newDishName by remember { mutableStateOf("") }
@@ -175,14 +173,7 @@ fun MenuSetupScreen(
                             onClick = {
                                 val price = newPriceInput.toDoubleOrNull() ?: 0.0
                                 if (newDishName.isNotBlank() && price > 0) {
-                                    menuList.add(
-                                        0,
-                                        MenuItemModel(
-                                            menuItemId = System.currentTimeMillis(),
-                                            name = newDishName.trim(),
-                                            defaultPrice = price
-                                        )
-                                    )
+                                    onAddMenuItem(newDishName, price)
                                     newDishName = ""
                                     newPriceInput = ""
                                 }
@@ -287,7 +278,7 @@ fun MenuSetupScreen(
 
                             // [ Delete ]
                             IconButton(
-                                onClick = { menuList.removeAt(index) },
+                                onClick = { onDeleteMenuItem(item.menuItemId) },
                                 modifier = Modifier.size(34.dp)
                             ) {
                                 Icon(
@@ -333,9 +324,11 @@ fun MenuSetupScreen(
                     onClick = {
                         val price = editDishPrice.toDoubleOrNull() ?: 0.0
                         if (editDishName.isNotBlank() && price > 0) {
-                            menuList[index] = menuList[index].copy(
-                                name = editDishName.trim(),
-                                defaultPrice = price
+                            onUpdateMenuItem(
+                                menuList[index].copy(
+                                    name = editDishName.trim(),
+                                    defaultPrice = price
+                                )
                             )
                             itemToEditIndex = null
                         }

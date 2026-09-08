@@ -26,6 +26,25 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
+internal fun deriveOrderStatusForEdit(existingStatus: String, totalCollected: Double, netTotal: Double): String {
+    if (existingStatus == "CANCELLED") return "CANCELLED"
+    return when {
+        totalCollected >= netTotal && netTotal > 0 -> "FULLY_PAID"
+        totalCollected > 0 -> "PARTIALLY_PAID"
+        else -> "UNPAID"
+    }
+}
+
+internal fun calculateNetRevenue(revenueCalculation: com.kitchentwenty2.data.local.dao.DailyRevenueCalculation): Double {
+    return (revenueCalculation.totalCollected - revenueCalculation.totalRefunded).coerceAtLeast(0.0)
+}
+
+internal fun resolvePaymentTimestampForOrder(orderDateMillis: Long, fallbackTimestamp: Long = System.currentTimeMillis()): Long {
+    val todayStart = DateTimeUtils.getStartOfDay(System.currentTimeMillis())
+    val orderStart = DateTimeUtils.getStartOfDay(orderDateMillis)
+    return if (orderStart < todayStart) orderStart else fallbackTimestamp
+}
+
 @Singleton
 class OrderRepositoryImpl @Inject constructor(
     private val orderDao: OrderDao,
@@ -81,10 +100,33 @@ class OrderRepositoryImpl @Inject constructor(
                             orderDate = orderTimestamp,
                             upfrontDiscount = orderForm.upfrontDiscount,
                             totalAmount = netTotal,
+                            settlementDiscount = existingOrder.settlementDiscount,
+                            advancePaid = existingOrder.advancePaid,
+                            totalCollected = existingOrder.totalCollected,
+                            refundedAmount = existingOrder.refundedAmount,
+                            status = deriveOrderStatusForEdit(
+                                existingStatus = existingOrder.status,
+                                totalCollected = existingOrder.totalCollected,
+                                netTotal = netTotal
+                            ),
                             modifiedDateTimeStamp = now
                         )
                         val items = orderForm.items.map { it.toEntity(orderForm.orderId) }
                         orderDao.updateOrderWithItems(updated, items)
+
+                        // If order date is today or in the past, adjust ADVANCE and SETTLEMENT payment dates to the order date
+                        val orderStart = DateTimeUtils.getStartOfDay(orderTimestamp)
+                        val todayStart = DateTimeUtils.getStartOfDay(System.currentTimeMillis())
+                        if (orderStart <= todayStart) {
+                            try {
+                                orderDao.updatePaymentDateForType(orderForm.orderId, "ADVANCE", orderStart)
+                                orderDao.updatePaymentDateForType(orderForm.orderId, "INTERMEDIATE", orderStart)
+                                orderDao.updatePaymentDateForType(orderForm.orderId, "SETTLEMENT", orderStart)
+                            } catch (e: Exception) {
+                                errorLogger.logException(e, "OrderRepository.adjustPaymentDatesOnEdit")
+                            }
+                        }
+
                         return@withContext orderForm.orderId
                     }
                 }
@@ -112,7 +154,7 @@ class OrderRepositoryImpl @Inject constructor(
                 val advancePaymentLog = if (advance > 0) {
                     PaymentLogEntity(
                         orderId = 0L,
-                        paymentDate = now,
+                        paymentDate = resolvePaymentTimestampForOrder(orderTimestamp, now),
                         amount = advance,
                         paymentType = "ADVANCE",
                         createdDateTimeStamp = now,
@@ -141,6 +183,7 @@ class OrderRepositoryImpl @Inject constructor(
                 val now = System.currentTimeMillis()
                 val newCollected = order.totalCollected + amount
                 val newStatus = if (newCollected >= order.totalAmount) "FULLY_PAID" else "PARTIALLY_PAID"
+                val paymentTimestamp = resolvePaymentTimestampForOrder(order.orderDate, now)
 
                 orderDao.updateOrderAndPaymentLog(
                     order = order.copy(
@@ -150,7 +193,7 @@ class OrderRepositoryImpl @Inject constructor(
                     ),
                     paymentLog = PaymentLogEntity(
                         orderId = orderId,
-                        paymentDate = now,
+                        paymentDate = paymentTimestamp,
                         amount = amount,
                         paymentType = paymentType,
                         createdDateTimeStamp = now,
@@ -177,6 +220,7 @@ class OrderRepositoryImpl @Inject constructor(
                 val now = System.currentTimeMillis()
                 val adjustedTotal = (order.totalAmount - settlementDiscount).coerceAtLeast(0.0)
                 val finalDue = (adjustedTotal - order.totalCollected).coerceAtLeast(0.0)
+                val paymentTimestamp = resolvePaymentTimestampForOrder(order.orderDate, now)
 
                 orderDao.updateOrderAndPaymentLog(
                     order = order.copy(
@@ -189,7 +233,7 @@ class OrderRepositoryImpl @Inject constructor(
                     paymentLog = if (finalDue > 0) {
                         PaymentLogEntity(
                             orderId = orderId,
-                            paymentDate = now,
+                            paymentDate = paymentTimestamp,
                             amount = finalDue,
                             paymentType = "SETTLEMENT",
                             createdDateTimeStamp = now,
@@ -247,7 +291,7 @@ class OrderRepositoryImpl @Inject constructor(
             orderDao.getDailyRevenueTotals(startOfDay, endOfDay),
             expenseDao.getTotalExpensesByDate(startOfDay, endOfDay)
         ) { revenueCalc, totalExpenses ->
-            val netRevenue = (revenueCalc.totalCollected - revenueCalc.totalRefunded).coerceAtLeast(0.0)
+            val netRevenue = calculateNetRevenue(revenueCalc)
             val netProfit = netRevenue - totalExpenses
             val isProjected = DateTimeUtils.isFuture(dateMillis)
 

@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -89,6 +90,7 @@ fun OrderDetailScreen(
     onAddIntermediatePayment: (Double, String) -> Unit = { _, _ -> },
     onSettleSuccess: (Double) -> Unit = {},
     onCancelOrderSuccess: (Double) -> Unit = {},
+    onEditOrder: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var status by remember { mutableStateOf(orderState.status) }
@@ -110,7 +112,7 @@ fun OrderDetailScreen(
 
     // Cancel / Refund prompt dialog state
     var showCancelDialog by remember { mutableStateOf(false) }
-    var refundAmountInput by remember { mutableStateOf("0") }
+    var refundAmountInput by remember { mutableStateOf("") }
     var refundError by remember { mutableStateOf<String?>(null) }
 
     val settlementDiscount by remember {
@@ -152,6 +154,13 @@ fun OrderDetailScreen(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
                         )
+                    }
+                },
+                actions = {
+                    if (status != OrderStatus.CANCELLED) {
+                        IconButton(onClick = { onEditOrder(orderState.orderId) }) {
+                            Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit Order")
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

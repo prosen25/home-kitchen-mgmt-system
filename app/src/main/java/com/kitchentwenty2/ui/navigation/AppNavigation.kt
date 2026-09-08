@@ -3,8 +3,12 @@ package com.kitchentwenty2.ui.navigation
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -25,6 +29,8 @@ import com.kitchentwenty2.ui.screens.order.OrderCreateEditScreen
 import com.kitchentwenty2.ui.screens.order.OrderCreateEditViewModel
 import com.kitchentwenty2.ui.screens.order.OrderDetailScreen
 import com.kitchentwenty2.ui.screens.order.OrderDetailViewModel
+import com.kitchentwenty2.ui.screens.reports.ReportsHistoryScreen
+import com.kitchentwenty2.ui.screens.reports.ReportsHistoryViewModel
 import com.kitchentwenty2.util.DateTimeUtils
 
 sealed class Screen(val route: String) {
@@ -37,7 +43,11 @@ sealed class Screen(val route: String) {
         fun createRoute(orderId: Long) = "order/detail/$orderId"
     }
     data object MenuSetup : Screen("menu/setup")
+    data object ReportsHistory : Screen("reports/history")
     data object AddExpense : Screen("expense/add")
+    data object EditExpense : Screen("expense/edit/{expenseId}") {
+        fun createRoute(expenseId: Long) = "expense/edit/$expenseId"
+    }
 }
 
 @Composable
@@ -94,20 +104,45 @@ fun AppNavigation(
                     shareLocation(order.deliveryAddress, order.googleLocationUrl ?: "")
                 },
                 onNewOrderClick = {
+                    // Pass current dashboard selected date to the Create Order screen via SavedStateHandle
+                    try {
+                        val currentDate = viewModel.selectedDateMillis.value
+                        navController.currentBackStackEntry?.savedStateHandle?.set("defaultDateMillis", currentDate)
+                    } catch (_: Exception) {
+                        // ignore if unavailable
+                    }
                     navController.navigate(Screen.CreateOrder.route)
                 },
+
                 onNewExpenseClick = {
+                    // Pass current dashboard selected date to the Add Expense screen via SavedStateHandle
+                    try {
+                        val currentDate = viewModel.selectedDateMillis.value
+                        navController.currentBackStackEntry?.savedStateHandle?.set("defaultDateMillis", currentDate)
+                    } catch (_: Exception) {
+                        // ignore if unavailable
+                    }
                     navController.navigate(Screen.AddExpense.route)
                 },
+
                 onNavigate = { destination ->
                     when (destination) {
                         DashboardNavigationItem.HOME -> { /* Already on dashboard */ }
                         DashboardNavigationItem.MASTER_MENU -> navController.navigate(Screen.MenuSetup.route)
-                        DashboardNavigationItem.REPORTS -> { /* Reports placeholder */ }
+                        DashboardNavigationItem.REPORTS -> navController.navigate(Screen.ReportsHistory.route)
                     }
                 },
+                onPreviousDayClick = viewModel::onPreviousDay,
+                onNextDayClick = viewModel::onNextDay,
                 onDateSelected = { millis ->
                     viewModel.onDateSelected(millis)
+                },
+                onExpenseEdit = { expenseId ->
+                    navController.navigate(Screen.EditExpense.createRoute(expenseId))
+                },
+                onExpenseDelete = viewModel::deleteExpense,
+                onOrderEdit = { orderId ->
+                    navController.navigate(Screen.EditOrder.createRoute(orderId))
                 }
             )
         }
@@ -136,7 +171,7 @@ fun AppNavigation(
         composable(
             route = Screen.EditOrder.route,
             arguments = listOf(navArgument("orderId") { type = NavType.LongType })
-        ) { backStackEntry ->
+        ) { _ ->
             val viewModel: OrderCreateEditViewModel = hiltViewModel()
             val formState by viewModel.formState.collectAsState()
             val menuItems by viewModel.menuItems.collectAsState()
@@ -186,6 +221,9 @@ fun AppNavigation(
                         viewModel.cancelOrder(refundAmount) {
                             navController.popBackStack()
                         }
+                    },
+                    onEditOrder = { orderId ->
+                        navController.navigate(Screen.EditOrder.createRoute(orderId))
                     }
                 )
             }
@@ -194,14 +232,41 @@ fun AppNavigation(
         // Screen 4: Master Menu Setup
         composable(Screen.MenuSetup.route) {
             val viewModel: MenuSetupViewModel = hiltViewModel()
+            val menuItems by viewModel.menuItems.collectAsState()
+
             MenuSetupScreen(
+                menuItems = menuItems,
+                onAddMenuItem = viewModel::addMenuItem,
+                onUpdateMenuItem = viewModel::updateMenuItem,
+                onDeleteMenuItem = viewModel::deleteMenuItem,
                 onBackClick = { navController.popBackStack() }
             )
         }
 
-        // Screen 5: Expense Entry Screen / Modal
+        // Screen 5: Reports / Order History
+        composable(Screen.ReportsHistory.route) {
+            val viewModel: ReportsHistoryViewModel = hiltViewModel()
+            val uiState by viewModel.uiState.collectAsState()
+
+            ReportsHistoryScreen(
+                uiState = uiState,
+                onBackClick = { navController.popBackStack() },
+                onPreviousDayClick = viewModel::onPreviousDay,
+                onNextDayClick = viewModel::onNextDay,
+                onDateSelected = viewModel::onDateSelected,
+                onOrderClick = { orderId ->
+                    navController.navigate(Screen.OrderDetail.createRoute(orderId))
+                }
+            )
+        }
+
+        // Screen 6: Expense Entry Screen / Modal
         composable(Screen.AddExpense.route) {
             val viewModel: ExpenseEntryViewModel = hiltViewModel()
+
+            // Read default date passed from dashboard (if any)
+            val defaultDateMillis: Long? = navController.currentBackStackEntry?.savedStateHandle?.get<Long>("defaultDateMillis")
+
             ExpenseEntryScreen(
                 onDismiss = { navController.popBackStack() },
                 onSaveSuccess = { date, category, amount, notes ->
@@ -213,8 +278,58 @@ fun AppNavigation(
                     ) {
                         navController.popBackStack()
                     }
-                }
+                },
+                initialDateMillis = defaultDateMillis
             )
+        }
+
+        // Screen 7: Edit Expense
+        composable(
+            route = Screen.EditExpense.route,
+            arguments = listOf(navArgument("expenseId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val expenseId = backStackEntry.arguments?.getLong("expenseId") ?: 0L
+            val viewModel: ExpenseEntryViewModel = hiltViewModel()
+
+            // Load existing expense and pass initial values to the screen
+            var initialLoaded by remember { mutableStateOf(false) }
+            var initialDateMillis by remember { mutableStateOf<Long?>(null) }
+            var initialCategory by remember { mutableStateOf<String?>(null) }
+            var initialAmount by remember { mutableStateOf<Double?>(null) }
+            var initialNotes by remember { mutableStateOf<String?>(null) }
+
+            LaunchedEffect(expenseId) {
+                val ex = viewModel.getExpenseById(expenseId)
+                ex?.let {
+                    initialDateMillis = it.expenseDateMillis
+                    initialCategory = it.category
+                    initialAmount = it.amount
+                    initialNotes = it.note
+                }
+                initialLoaded = true
+            }
+
+            if (initialLoaded) {
+                ExpenseEntryScreen(
+                    onDismiss = { navController.popBackStack() },
+                    onSaveSuccess = { date, category, amount, notes ->
+                        viewModel.updateExpense(
+                            dateMillis = DateTimeUtils.parseDate(date),
+                            category = category,
+                            amount = amount,
+                            notes = notes,
+                            expenseId = expenseId
+                        ) {
+                            navController.popBackStack()
+                        }
+                    },
+                    initialExpenseId = expenseId,
+                    initialDateMillis = initialDateMillis,
+                    initialCategory = initialCategory,
+                    initialAmount = initialAmount,
+                    initialNotes = initialNotes
+                )
+            }
         }
     }
 }
