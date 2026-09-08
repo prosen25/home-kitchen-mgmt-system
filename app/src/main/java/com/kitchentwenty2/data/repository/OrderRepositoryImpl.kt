@@ -83,10 +83,8 @@ class OrderRepositoryImpl @Inject constructor(
                             totalAmount = netTotal,
                             modifiedDateTimeStamp = now
                         )
-                        orderDao.updateOrder(updated)
-                        orderDao.deleteOrderItemsByOrderId(orderForm.orderId)
                         val items = orderForm.items.map { it.toEntity(orderForm.orderId) }
-                        orderDao.insertOrderItems(items)
+                        orderDao.updateOrderWithItems(updated, items)
                         return@withContext orderForm.orderId
                     }
                 }
@@ -110,27 +108,21 @@ class OrderRepositoryImpl @Inject constructor(
                     modifiedDateTimeStamp = now
                 )
 
-                val newOrderId = orderDao.insertOrder(orderEntity)
-
-                // Insert items
-                val items = orderForm.items.map { it.toEntity(newOrderId) }
-                orderDao.insertOrderItems(items)
-
-                // Log Advance Payment if present
-                if (advance > 0) {
-                    orderDao.insertPaymentLog(
-                        PaymentLogEntity(
-                            orderId = newOrderId,
-                            paymentDate = now,
-                            amount = advance,
-                            paymentType = "ADVANCE",
-                            createdDateTimeStamp = now,
-                            modifiedDateTimeStamp = now
-                        )
+                val items = orderForm.items.map { it.toEntity(0L) }
+                val advancePaymentLog = if (advance > 0) {
+                    PaymentLogEntity(
+                        orderId = 0L,
+                        paymentDate = now,
+                        amount = advance,
+                        paymentType = "ADVANCE",
+                        createdDateTimeStamp = now,
+                        modifiedDateTimeStamp = now
                     )
+                } else {
+                    null
                 }
 
-                newOrderId
+                orderDao.insertOrderWithItemsAndPayment(orderEntity, items, advancePaymentLog)
             } catch (e: Exception) {
                 errorLogger.logException(e, "OrderRepository.saveOrder")
                 -1L
@@ -142,20 +134,21 @@ class OrderRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 val order = orderDao.getOrderById(orderId) ?: return@withContext
+                val outstandingBalance = (order.totalAmount - order.totalCollected).coerceAtLeast(0.0)
+                if (!amount.isFinite() || amount <= 0.0 || amount > outstandingBalance) {
+                    return@withContext
+                }
                 val now = System.currentTimeMillis()
                 val newCollected = order.totalCollected + amount
                 val newStatus = if (newCollected >= order.totalAmount) "FULLY_PAID" else "PARTIALLY_PAID"
 
-                orderDao.updateOrder(
-                    order.copy(
+                orderDao.updateOrderAndPaymentLog(
+                    order = order.copy(
                         totalCollected = newCollected,
                         status = newStatus,
                         modifiedDateTimeStamp = now
-                    )
-                )
-
-                orderDao.insertPaymentLog(
-                    PaymentLogEntity(
+                    ),
+                    paymentLog = PaymentLogEntity(
                         orderId = orderId,
                         paymentDate = now,
                         amount = amount,
@@ -174,22 +167,26 @@ class OrderRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 val order = orderDao.getOrderById(orderId) ?: return@withContext
+                if (DateTimeUtils.isFuture(order.orderDate) ||
+                    !settlementDiscount.isFinite() ||
+                    settlementDiscount < 0.0 ||
+                    settlementDiscount > order.totalAmount
+                ) {
+                    return@withContext
+                }
                 val now = System.currentTimeMillis()
                 val adjustedTotal = (order.totalAmount - settlementDiscount).coerceAtLeast(0.0)
                 val finalDue = (adjustedTotal - order.totalCollected).coerceAtLeast(0.0)
 
-                orderDao.updateOrder(
-                    order.copy(
+                orderDao.updateOrderAndPaymentLog(
+                    order = order.copy(
                         settlementDiscount = settlementDiscount,
                         totalAmount = adjustedTotal,
                         totalCollected = order.totalCollected + finalDue,
                         status = "FULLY_PAID",
                         modifiedDateTimeStamp = now
-                    )
-                )
-
-                if (finalDue > 0) {
-                    orderDao.insertPaymentLog(
+                    ),
+                    paymentLog = if (finalDue > 0) {
                         PaymentLogEntity(
                             orderId = orderId,
                             paymentDate = now,
@@ -198,8 +195,10 @@ class OrderRepositoryImpl @Inject constructor(
                             createdDateTimeStamp = now,
                             modifiedDateTimeStamp = now
                         )
-                    )
-                }
+                    } else {
+                        null
+                    }
+                )
             } catch (e: Exception) {
                 errorLogger.logException(e, "OrderRepository.settleOrder")
             }
@@ -210,18 +209,18 @@ class OrderRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 val order = orderDao.getOrderById(orderId) ?: return@withContext
+                if (!refundAmount.isFinite() || refundAmount < 0.0 || refundAmount > order.totalCollected) {
+                    return@withContext
+                }
                 val now = System.currentTimeMillis()
 
-                orderDao.updateOrder(
-                    order.copy(
+                orderDao.updateOrderAndPaymentLog(
+                    order = order.copy(
                         status = "CANCELLED",
                         refundedAmount = refundAmount,
                         modifiedDateTimeStamp = now
-                    )
-                )
-
-                if (refundAmount > 0) {
-                    orderDao.insertPaymentLog(
+                    ),
+                    paymentLog = if (refundAmount > 0) {
                         PaymentLogEntity(
                             orderId = orderId,
                             paymentDate = now,
@@ -230,8 +229,10 @@ class OrderRepositoryImpl @Inject constructor(
                             createdDateTimeStamp = now,
                             modifiedDateTimeStamp = now
                         )
-                    )
-                }
+                    } else {
+                        null
+                    }
+                )
             } catch (e: Exception) {
                 errorLogger.logException(e, "OrderRepository.cancelOrder")
             }

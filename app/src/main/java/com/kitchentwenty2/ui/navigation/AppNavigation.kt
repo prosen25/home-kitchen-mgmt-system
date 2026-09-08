@@ -174,8 +174,11 @@ fun AppNavigation(
                             shareLocation(s.customerAddress, s.googleLocationUrl)
                         }
                     },
-                    onSettleSuccess = {
-                        viewModel.settleOrder(orderState?.settlementDiscount ?: 0.0) {
+                    onAddIntermediatePayment = { amount, paymentType ->
+                        viewModel.addIntermediatePayment(amount, paymentType)
+                    },
+                    onSettleSuccess = { settlementDiscount ->
+                        viewModel.settleOrder(settlementDiscount) {
                             navController.popBackStack()
                         }
                     },
