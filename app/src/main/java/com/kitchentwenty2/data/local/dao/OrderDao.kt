@@ -36,6 +36,31 @@ interface OrderDao {
     @Update
     suspend fun updateOrder(order: OrderEntity)
 
+    @Transaction
+    suspend fun updateOrderAndPaymentLog(order: OrderEntity, paymentLog: PaymentLogEntity?) {
+        updateOrder(order)
+        paymentLog?.let { insertPaymentLog(it) }
+    }
+
+    @Transaction
+    suspend fun updateOrderWithItems(order: OrderEntity, items: List<OrderItemEntity>) {
+        updateOrder(order)
+        deleteOrderItemsByOrderId(order.orderId)
+        insertOrderItems(items)
+    }
+
+    @Transaction
+    suspend fun insertOrderWithItemsAndPayment(
+        order: OrderEntity,
+        items: List<OrderItemEntity>,
+        paymentLog: PaymentLogEntity?
+    ): Long {
+        val orderId = insertOrder(order)
+        insertOrderItems(items.map { it.copy(orderId = orderId) })
+        paymentLog?.let { insertPaymentLog(it.copy(orderId = orderId)) }
+        return orderId
+    }
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrderItems(items: List<OrderItemEntity>)
 

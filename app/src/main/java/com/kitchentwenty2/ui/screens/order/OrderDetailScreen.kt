@@ -105,10 +105,13 @@ fun OrderDetailScreen(
     var showPaymentDialog by remember { mutableStateOf(false) }
     var paymentAmountInput by remember { mutableStateOf("") }
     var paymentTypeInput by remember { mutableStateOf("Intermediate Payment") }
+    var paymentError by remember { mutableStateOf<String?>(null) }
+    var settlementDiscountError by remember { mutableStateOf<String?>(null) }
 
     // Cancel / Refund prompt dialog state
     var showCancelDialog by remember { mutableStateOf(false) }
     var refundAmountInput by remember { mutableStateOf("0") }
+    var refundError by remember { mutableStateOf<String?>(null) }
 
     val settlementDiscount by remember {
         derivedStateOf { settlementDiscountInput.toDoubleOrNull() ?: 0.0 }
@@ -471,7 +474,10 @@ fun OrderDetailScreen(
                         // Settlement Discount Field
                         OutlinedTextField(
                             value = settlementDiscountInput,
-                            onValueChange = { settlementDiscountInput = it },
+                            onValueChange = {
+                                settlementDiscountInput = it
+                                settlementDiscountError = null
+                            },
                             label = { Text("Courtesy / Settlement Discount (₹)") },
                             placeholder = { Text("0.00") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -480,6 +486,13 @@ fun OrderDetailScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(10.dp)
                         )
+                        settlementDiscountError?.let { error ->
+                            Text(
+                                text = error,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(10.dp))
 
@@ -523,17 +536,28 @@ fun OrderDetailScreen(
                         // "Mark as Fully Paid & Settle" Button (Green)
                         Button(
                             onClick = {
-                                totalCollected += newFinalDue
-                                status = OrderStatus.FULLY_PAID
-                                paymentLogs.add(
-                                    PaymentRecord(
-                                        paymentId = System.currentTimeMillis(),
-                                        date = "Today",
-                                        amount = newFinalDue,
-                                        type = "Final Settlement"
+                                when {
+                                    !settlementDiscount.isFinite() || settlementDiscount < 0.0 -> {
+                                        settlementDiscountError = "Enter a valid non-negative discount."
+                                    }
+                                    settlementDiscount > orderState.totalAmount -> {
+                                        settlementDiscountError = "Discount cannot exceed the order total."
+                                    }
+                                    else -> {
+                                        totalCollected += newFinalDue
+                                        status = OrderStatus.FULLY_PAID
+                                        paymentLogs.add(
+                                            PaymentRecord(
+                                                paymentId = System.currentTimeMillis(),
+                                                date = "Today",
+                                                amount = newFinalDue,
+                                                type = "Final Settlement"
+                                            )
                                     )
-                                )
-                                onSettleSuccess(settlementDiscount)
+                                        settlementDiscountError = null
+                                        onSettleSuccess(settlementDiscount)
+                                    }
+                                }
                             },
                             enabled = isSettleEnabled,
                             shape = RoundedCornerShape(12.dp),
@@ -604,7 +628,10 @@ fun OrderDetailScreen(
     // Add Intermediate Payment Dialog
     if (showPaymentDialog) {
         AlertDialog(
-            onDismissRequest = { showPaymentDialog = false },
+            onDismissRequest = {
+                showPaymentDialog = false
+                paymentError = null
+            },
             title = { Text("Record Payment", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -615,12 +642,22 @@ fun OrderDetailScreen(
                     )
                     OutlinedTextField(
                         value = paymentAmountInput,
-                        onValueChange = { paymentAmountInput = it },
+                        onValueChange = {
+                            paymentAmountInput = it
+                            paymentError = null
+                        },
                         label = { Text("Payment Amount (₹) *") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
+                    paymentError?.let { error ->
+                        Text(
+                            text = error,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                     OutlinedTextField(
                         value = paymentTypeInput,
                         onValueChange = { paymentTypeInput = it },
@@ -634,7 +671,14 @@ fun OrderDetailScreen(
                 Button(
                     onClick = {
                         val amount = paymentAmountInput.toDoubleOrNull() ?: 0.0
-                        if (amount > 0) {
+                        when {
+                            !amount.isFinite() || amount <= 0.0 -> {
+                                paymentError = "Enter a payment amount greater than zero."
+                            }
+                            amount > currentDue -> {
+                                paymentError = "Payment cannot exceed the outstanding balance."
+                            }
+                            else -> {
                             totalCollected += amount
                             paymentLogs.add(
                                 PaymentRecord(
@@ -652,6 +696,8 @@ fun OrderDetailScreen(
                             }
                             showPaymentDialog = false
                             paymentAmountInput = ""
+                            paymentError = null
+                            }
                         }
                     }
                 ) {
@@ -659,7 +705,10 @@ fun OrderDetailScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showPaymentDialog = false }) { Text("Cancel") }
+                TextButton(onClick = {
+                    showPaymentDialog = false
+                    paymentError = null
+                }) { Text("Cancel") }
             }
         )
     }
@@ -667,7 +716,10 @@ fun OrderDetailScreen(
     // Cancel Order & Refund Dialog
     if (showCancelDialog) {
         AlertDialog(
-            onDismissRequest = { showCancelDialog = false },
+            onDismissRequest = {
+                showCancelDialog = false
+                refundError = null
+            },
             title = { Text("Cancel Order #${orderState.orderId}", fontWeight = FontWeight.Bold, color = LossRed) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -677,21 +729,42 @@ fun OrderDetailScreen(
                     )
                     OutlinedTextField(
                         value = refundAmountInput,
-                        onValueChange = { refundAmountInput = it },
+                        onValueChange = {
+                            refundAmountInput = it
+                            refundError = null
+                        },
                         label = { Text("Refund Amount (₹)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
+                    refundError?.let { error ->
+                        Text(
+                            text = error,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
                         val refund = refundAmountInput.toDoubleOrNull() ?: 0.0
-                        status = OrderStatus.CANCELLED
-                        showCancelDialog = false
-                        onCancelOrderSuccess(refund)
+                        when {
+                            !refund.isFinite() || refund < 0.0 -> {
+                                refundError = "Enter a valid non-negative refund amount."
+                            }
+                            refund > totalCollected -> {
+                                refundError = "Refund cannot exceed the amount collected."
+                            }
+                            else -> {
+                                status = OrderStatus.CANCELLED
+                                showCancelDialog = false
+                                refundError = null
+                                onCancelOrderSuccess(refund)
+                            }
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = LossRed)
                 ) {
@@ -699,7 +772,10 @@ fun OrderDetailScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showCancelDialog = false }) { Text("Dismiss") }
+                TextButton(onClick = {
+                    showCancelDialog = false
+                    refundError = null
+                }) { Text("Dismiss") }
             }
         )
     }

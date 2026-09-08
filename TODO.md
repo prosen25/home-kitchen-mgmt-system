@@ -21,14 +21,14 @@ This file tracks the remaining implementation work identified during the project
 
 ## Priority 2: Payments and Accounting Safety
 
-- [ ] Connect intermediate payment actions from `OrderDetailScreen` through navigation and `OrderDetailViewModel` to Room.
-- [ ] Connect settlement discount input so the entered value is persisted correctly.
-- [ ] Connect cancellation and refund actions with persisted refund records.
-- [ ] Reject payments greater than the outstanding balance.
-- [ ] Reject refunds greater than the amount collected.
-- [ ] Reject discounts greater than the order total.
-- [ ] Enforce the rule that future-dated orders cannot be settled.
-- [ ] Make order and payment updates transactional so partial writes cannot leave inconsistent data.
+- [x] Connect intermediate payment actions from `OrderDetailScreen` through navigation and `OrderDetailViewModel` to Room.
+- [x] Connect settlement discount input so the entered value is persisted correctly.
+- [x] Connect cancellation and refund actions with persisted refund records.
+- [x] Reject payments greater than the outstanding balance.
+- [x] Reject refunds greater than the amount collected.
+- [x] Reject discounts greater than the order total.
+- [x] Enforce the rule that future-dated orders cannot be settled.
+- [x] Make order and payment updates transactional so partial writes cannot leave inconsistent data.
 - [ ] Preserve payment history and status correctly when an order is edited.
 
 ## Priority 3: Menu and Expense Persistence
