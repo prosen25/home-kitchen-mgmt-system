@@ -61,10 +61,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -81,8 +78,6 @@ import com.kitchentwenty2.domain.model.CustomerProfile
 import com.kitchentwenty2.domain.model.MenuItemModel
 import com.kitchentwenty2.domain.model.OrderFormState
 import com.kitchentwenty2.domain.model.OrderItemForm
-import com.kitchentwenty2.domain.model.SampleCustomers
-import com.kitchentwenty2.domain.model.SampleMenuItems
 import com.kitchentwenty2.ui.components.formatCurrency
 import com.kitchentwenty2.ui.theme.KitchenTwenty2Theme
 import com.kitchentwenty2.ui.theme.OrangePrimary
@@ -95,50 +90,29 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun OrderCreateEditScreen(
-    orderIdToEdit: Long? = null,
-    menuList: List<MenuItemModel> = SampleMenuItems,
-    customerProfiles: List<CustomerProfile> = SampleCustomers,
+    formState: OrderFormState = OrderFormState(),
+    menuList: List<MenuItemModel> = emptyList(),
+    customerProfiles: List<CustomerProfile> = emptyList(),
     onBackClick: () -> Unit = {},
+    onFormStateChanged: (OrderFormState) -> Unit = {},
     onSaveOrder: (OrderFormState) -> Unit = {},
-    onSaveSuccess: () -> Unit = {},
     onTestDial: (String) -> Unit = {},
     onOpenMaps: (String) -> Unit = {},
     onShareLocation: (String, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
-    val isEditMode = orderIdToEdit != null
+    val isEditMode = formState.isEditMode
 
     // Form fields state
-    var orderDate by remember { mutableStateOf("07/09/2026") }
     var showDatePicker by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
 
-    // Customer info state
-    var customerName by remember { mutableStateOf(if (isEditMode) "Jane Doe" else "") }
-    var mobileNumber by remember { mutableStateOf(if (isEditMode) "+91 98765 43210" else "") }
-    var deliveryAddress by remember {
-        mutableStateOf(if (isEditMode) "Flat 402, Green Valley Apts, Indiranagar, Bengaluru" else "")
-    }
-    var googleLocationUrl by remember {
-        mutableStateOf(if (isEditMode) "https://maps.google.com/?q=12.9716,77.5946" else "")
-    }
-
     // Autocomplete dropdown state
     var isAutoCompleteExpanded by remember { mutableStateOf(false) }
-    val matchingCustomers = remember(customerName, customerProfiles) {
-        if (customerName.isNotBlank()) {
-            customerProfiles.filter { it.name.contains(customerName, ignoreCase = true) }
+    val matchingCustomers = remember(formState.customerName, customerProfiles) {
+        if (formState.customerName.isNotBlank()) {
+            customerProfiles.filter { it.name.contains(formState.customerName, ignoreCase = true) }
         } else emptyList()
-    }
-
-    // Items list state
-    val orderItems = remember {
-        mutableStateListOf<OrderItemForm>().apply {
-            if (isEditMode) {
-                add(OrderItemForm(1, "Chicken Dum Biryani", 260.0, 2))
-                add(OrderItemForm(2, "Special Raita", 60.0, 1))
-            }
-        }
     }
 
     // Dialog state for custom item
@@ -146,25 +120,9 @@ fun OrderCreateEditScreen(
     var customItemName by remember { mutableStateOf("") }
     var customItemPrice by remember { mutableStateOf("") }
 
-    // Financial calculations state
-    var upfrontDiscountInput by remember { mutableStateOf(if (isEditMode) "50" else "0") }
-    var advancePaymentInput by remember { mutableStateOf(if (isEditMode) "200" else "0") }
-
-    val subtotal by remember {
-        derivedStateOf { orderItems.sumOf { it.subtotal } }
-    }
-    val upfrontDiscount by remember {
-        derivedStateOf { upfrontDiscountInput.toDoubleOrNull() ?: 0.0 }
-    }
-    val advancePayment by remember {
-        derivedStateOf { advancePaymentInput.toDoubleOrNull() ?: 0.0 }
-    }
-    val netTotal by remember {
-        derivedStateOf { (subtotal - upfrontDiscount).coerceAtLeast(0.0) }
-    }
-    val remainingDue by remember {
-        derivedStateOf { (netTotal - advancePayment).coerceAtLeast(0.0) }
-    }
+    val subtotal = formState.subtotal
+    val netTotal = formState.netTotal
+    val remainingDue = formState.remainingBalance
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -172,7 +130,7 @@ fun OrderCreateEditScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = if (isEditMode) "Edit Order #$orderIdToEdit" else "Create New Order",
+                        text = if (isEditMode) "Edit Order #${formState.orderId}" else "Create New Order",
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -220,20 +178,7 @@ fun OrderCreateEditScreen(
 
                     Button(
                         onClick = {
-                            val form = OrderFormState(
-                                isEditMode = isEditMode,
-                                orderId = orderIdToEdit ?: 0L,
-                                orderDate = orderDate,
-                                customerName = customerName,
-                                mobileNumber = mobileNumber,
-                                address = deliveryAddress,
-                                googleLocationUrl = googleLocationUrl,
-                                items = orderItems.toList(),
-                                upfrontDiscount = upfrontDiscount,
-                                advancePayment = advancePayment
-                            )
-                            onSaveOrder(form)
-                            onSaveSuccess()
+                            onSaveOrder(formState)
                         },
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
@@ -290,7 +235,7 @@ fun OrderCreateEditScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    text = orderDate,
+                                    text = formState.orderDate,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
@@ -315,9 +260,9 @@ fun OrderCreateEditScreen(
                     // Customer Name with Autocomplete
                     Box(modifier = Modifier.fillMaxWidth()) {
                         OutlinedTextField(
-                            value = customerName,
+                            value = formState.customerName,
                             onValueChange = {
-                                customerName = it
+                                onFormStateChanged(formState.copy(customerName = it))
                                 isAutoCompleteExpanded = it.isNotBlank() && matchingCustomers.isNotEmpty()
                             },
                             label = { Text("Customer Name *") },
@@ -349,10 +294,14 @@ fun OrderCreateEditScreen(
                                         }
                                     },
                                     onClick = {
-                                        customerName = profile.name
-                                        mobileNumber = profile.mobileNumber
-                                        deliveryAddress = profile.address
-                                        googleLocationUrl = profile.googleLocationUrl ?: ""
+                                        onFormStateChanged(
+                                            formState.copy(
+                                                customerName = profile.name,
+                                                mobileNumber = profile.mobileNumber,
+                                                address = profile.address,
+                                                googleLocationUrl = profile.googleLocationUrl ?: ""
+                                            )
+                                        )
                                         isAutoCompleteExpanded = false
                                     }
                                 )
@@ -368,8 +317,8 @@ fun OrderCreateEditScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         OutlinedTextField(
-                            value = mobileNumber,
-                            onValueChange = { mobileNumber = it },
+                            value = formState.mobileNumber,
+                            onValueChange = { onFormStateChanged(formState.copy(mobileNumber = it)) },
                             label = { Text("Mobile Number") },
                             placeholder = { Text("+91 98765 43210") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
@@ -381,17 +330,17 @@ fun OrderCreateEditScreen(
                         Spacer(modifier = Modifier.width(8.dp))
 
                         IconButton(
-                            onClick = { onTestDial(mobileNumber) },
-                            enabled = mobileNumber.isNotBlank(),
+                            onClick = { onTestDial(formState.mobileNumber) },
+                            enabled = formState.mobileNumber.isNotBlank(),
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(if (mobileNumber.isNotBlank()) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)
+                                .background(if (formState.mobileNumber.isNotBlank()) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Call,
                                 contentDescription = "Test Dial",
-                                tint = if (mobileNumber.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = if (formState.mobileNumber.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -400,8 +349,8 @@ fun OrderCreateEditScreen(
 
                     // Delivery Address
                     OutlinedTextField(
-                        value = deliveryAddress,
-                        onValueChange = { deliveryAddress = it },
+                        value = formState.address,
+                        onValueChange = { onFormStateChanged(formState.copy(address = it)) },
                         label = { Text("Delivery Address") },
                         placeholder = { Text("House number, street name, landmarks...") },
                         minLines = 2,
@@ -414,8 +363,8 @@ fun OrderCreateEditScreen(
 
                     // Google Location Tag Link
                     OutlinedTextField(
-                        value = googleLocationUrl,
-                        onValueChange = { googleLocationUrl = it },
+                        value = formState.googleLocationUrl,
+                        onValueChange = { onFormStateChanged(formState.copy(googleLocationUrl = it)) },
                         label = { Text("Google Maps Link / GPS Coordinates") },
                         placeholder = { Text("Paste link from WhatsApp or Maps") },
                         leadingIcon = {
@@ -427,18 +376,18 @@ fun OrderCreateEditScreen(
                     )
 
                     // Quick Map Actions
-                    if (googleLocationUrl.isNotBlank()) {
+                    if (formState.googleLocationUrl.isNotBlank()) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             AssistChip(
-                                onClick = { onOpenMaps(googleLocationUrl) },
+                                onClick = { onOpenMaps(formState.googleLocationUrl) },
                                 label = { Text("Open in Maps") },
                                 leadingIcon = {
                                     Icon(imageVector = Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(16.dp))
                                 }
                             )
                             AssistChip(
-                                onClick = { onShareLocation(deliveryAddress, googleLocationUrl) },
+                                onClick = { onShareLocation(formState.address, formState.googleLocationUrl) },
                                 label = { Text("Share via WhatsApp") },
                                 leadingIcon = {
                                     Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(14.dp))
@@ -471,18 +420,20 @@ fun OrderCreateEditScreen(
                         menuList.take(6).forEach { menuItem ->
                             AssistChip(
                                 onClick = {
-                                    val existingIndex = orderItems.indexOfFirst { it.itemName == menuItem.name }
+                                    val existingIndex = formState.items.indexOfFirst { it.itemName == menuItem.name }
+                                    val updatedItems = formState.items.toMutableList()
                                     if (existingIndex >= 0) {
-                                        val existing = orderItems[existingIndex]
-                                        orderItems[existingIndex] = existing.copy(quantity = existing.quantity + 1)
+                                        val existing = updatedItems[existingIndex]
+                                        updatedItems[existingIndex] = existing.copy(quantity = existing.quantity + 1)
                                     } else {
-                                        orderItems.add(OrderItemForm(
+                                        updatedItems.add(OrderItemForm(
                                             id = menuItem.menuItemId,
                                             itemName = menuItem.name,
                                             unitPrice = menuItem.defaultPrice,
                                             quantity = 1
                                         ))
                                     }
+                                    onFormStateChanged(formState.copy(items = updatedItems))
                                 },
                                 label = { Text("+ ${menuItem.name} (${formatCurrency(menuItem.defaultPrice)})", fontSize = 11.sp) },
                                 colors = AssistChipDefaults.assistChipColors(
@@ -496,7 +447,7 @@ fun OrderCreateEditScreen(
                     Spacer(modifier = Modifier.height(14.dp))
 
                     // Selected Items Table List
-                    if (orderItems.isEmpty()) {
+                    if (formState.items.isEmpty()) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -511,7 +462,7 @@ fun OrderCreateEditScreen(
                         }
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            orderItems.forEachIndexed { index, item ->
+                            formState.items.forEachIndexed { index, item ->
                                 Surface(
                                     shape = RoundedCornerShape(10.dp),
                                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
@@ -547,11 +498,13 @@ fun OrderCreateEditScreen(
                                         ) {
                                             IconButton(
                                                 onClick = {
+                                                    val updatedItems = formState.items.toMutableList()
                                                     if (item.quantity > 1) {
-                                                        orderItems[index] = item.copy(quantity = item.quantity - 1)
+                                                        updatedItems[index] = item.copy(quantity = item.quantity - 1)
                                                     } else {
-                                                        orderItems.removeAt(index)
+                                                        updatedItems.removeAt(index)
                                                     }
+                                                    onFormStateChanged(formState.copy(items = updatedItems))
                                                 },
                                                 modifier = Modifier.size(28.dp)
                                             ) {
@@ -567,7 +520,9 @@ fun OrderCreateEditScreen(
 
                                             IconButton(
                                                 onClick = {
-                                                    orderItems[index] = item.copy(quantity = item.quantity + 1)
+                                                    val updatedItems = formState.items.toMutableList()
+                                                    updatedItems[index] = item.copy(quantity = item.quantity + 1)
+                                                    onFormStateChanged(formState.copy(items = updatedItems))
                                                 },
                                                 modifier = Modifier.size(28.dp)
                                             ) {
@@ -586,7 +541,11 @@ fun OrderCreateEditScreen(
 
                                         // Trash Icon
                                         IconButton(
-                                            onClick = { orderItems.removeAt(index) },
+                                            onClick = {
+                                                val updatedItems = formState.items.toMutableList()
+                                                updatedItems.removeAt(index)
+                                                onFormStateChanged(formState.copy(items = updatedItems))
+                                            },
                                             modifier = Modifier.size(28.dp)
                                         ) {
                                             Icon(
@@ -635,8 +594,8 @@ fun OrderCreateEditScreen(
 
                     // Upfront Discount Field
                     OutlinedTextField(
-                        value = upfrontDiscountInput,
-                        onValueChange = { upfrontDiscountInput = it },
+                        value = formState.upfrontDiscount.toInputString(),
+                        onValueChange = { onFormStateChanged(formState.copy(upfrontDiscount = it.toDoubleOrNull() ?: 0.0)) },
                         label = { Text("Upfront Discount (₹)") },
                         placeholder = { Text("0.00") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -660,8 +619,8 @@ fun OrderCreateEditScreen(
 
                     // Advance Payment Field
                     OutlinedTextField(
-                        value = advancePaymentInput,
-                        onValueChange = { advancePaymentInput = it },
+                        value = formState.advancePayment.toInputString(),
+                        onValueChange = { onFormStateChanged(formState.copy(advancePayment = it.toDoubleOrNull() ?: 0.0)) },
                         label = { Text("Advance Payment Collected (₹)") },
                         placeholder = { Text("0.00") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -722,11 +681,11 @@ fun OrderCreateEditScreen(
                     onClick = {
                         val price = customItemPrice.toDoubleOrNull() ?: 0.0
                         if (customItemName.isNotBlank() && price > 0) {
-                            orderItems.add(OrderItemForm(
+                            onFormStateChanged(formState.copy(items = formState.items + OrderItemForm(
                                 itemName = customItemName,
                                 unitPrice = price,
                                 quantity = 1
-                            ))
+                            )))
                             customItemName = ""
                             customItemPrice = ""
                             showCustomItemDialog = false
@@ -753,7 +712,11 @@ fun OrderCreateEditScreen(
                 TextButton(
                     onClick = {
                         datePickerState.selectedDateMillis?.let { millis ->
-                            orderDate = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(millis))
+                            onFormStateChanged(
+                                formState.copy(
+                                    orderDate = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(millis))
+                                )
+                            )
                         }
                         showDatePicker = false
                     }
@@ -802,4 +765,7 @@ fun OrderCreateEditScreenPreview() {
         OrderCreateEditScreen()
     }
 }
+
+private fun Double.toInputString(): String =
+    if (this == 0.0) "0" else toString()
 

@@ -115,12 +115,17 @@ fun AppNavigation(
         // Screen 2: Create Order
         composable(Screen.CreateOrder.route) {
             val viewModel: OrderCreateEditViewModel = hiltViewModel()
+            val formState by viewModel.formState.collectAsState()
+            val menuItems by viewModel.menuItems.collectAsState()
+            val customerSuggestions by viewModel.customerSuggestions.collectAsState()
+
             OrderCreateEditScreen(
-                orderIdToEdit = null,
+                formState = formState,
+                menuList = menuItems,
+                customerProfiles = customerSuggestions,
+                onFormStateChanged = viewModel::updateFormState,
                 onBackClick = { navController.popBackStack() },
-                onSaveSuccess = {
-                    navController.popBackStack()
-                },
+                onSaveOrder = { viewModel.saveOrder { navController.popBackStack() } },
                 onTestDial = dialPhone,
                 onOpenMaps = { url -> openMaps(url) },
                 onShareLocation = shareLocation
@@ -132,12 +137,18 @@ fun AppNavigation(
             route = Screen.EditOrder.route,
             arguments = listOf(navArgument("orderId") { type = NavType.LongType })
         ) { backStackEntry ->
-            val orderId = backStackEntry.arguments?.getLong("orderId") ?: 0L
             val viewModel: OrderCreateEditViewModel = hiltViewModel()
+            val formState by viewModel.formState.collectAsState()
+            val menuItems by viewModel.menuItems.collectAsState()
+            val customerSuggestions by viewModel.customerSuggestions.collectAsState()
+
             OrderCreateEditScreen(
-                orderIdToEdit = orderId,
+                formState = formState,
+                menuList = menuItems,
+                customerProfiles = customerSuggestions,
+                onFormStateChanged = viewModel::updateFormState,
                 onBackClick = { navController.popBackStack() },
-                onSaveSuccess = { navController.popBackStack() },
+                onSaveOrder = { viewModel.saveOrder { navController.popBackStack() } },
                 onTestDial = dialPhone,
                 onOpenMaps = { url -> openMaps(url) },
                 onShareLocation = shareLocation

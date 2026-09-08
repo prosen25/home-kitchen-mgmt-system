@@ -88,6 +88,10 @@ class OrderCreateEditViewModel @Inject constructor(
         _formState.update { it.copy(orderDate = newDate) }
     }
 
+    fun updateFormState(newState: OrderFormState) {
+        _formState.value = newState
+    }
+
     fun onCustomerNameChanged(name: String) {
         _formState.update { it.copy(customerName = name) }
         _customerSearchQuery.value = name
