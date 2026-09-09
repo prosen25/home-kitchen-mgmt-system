@@ -353,7 +353,7 @@ class OrderRepositoryImpl @Inject constructor(
             customerPhone = order.customerPhone ?: "",
             customerAddress = order.customerAddress ?: "",
             googleLocationUrl = order.googleLocationUrl ?: "",
-            items = items.map { OrderItemForm(it.orderItemId, it.itemName, it.unitPrice, it.quantity) },
+            items = items.map { OrderItemForm(it.orderItemId, it.itemName, it.unitPrice, it.quantity, it.menuItemId, it.isCustom) },
             upfrontDiscount = order.upfrontDiscount,
             totalAmount = order.totalAmount,
             totalCollected = order.totalCollected,
@@ -369,6 +369,8 @@ class OrderRepositoryImpl @Inject constructor(
         unitPrice = unitPrice,
         quantity = quantity,
         subtotal = subtotal,
+        menuItemId = menuItemId,
+        isCustom = isCustom,
         createdDateTimeStamp = System.currentTimeMillis(),
         modifiedDateTimeStamp = System.currentTimeMillis()
     )

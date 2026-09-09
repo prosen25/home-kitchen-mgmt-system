@@ -14,7 +14,9 @@ data class OrderItemForm(
     val id: Long = System.currentTimeMillis(),
     val itemName: String,
     val unitPrice: Double,
-    val quantity: Int = 1
+    val quantity: Int = 1,
+    val menuItemId: Long? = null,
+    val isCustom: Boolean = false
 ) {
     val subtotal: Double get() = unitPrice * quantity
 }

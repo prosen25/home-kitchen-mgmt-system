@@ -414,44 +414,90 @@ fun OrderCreateEditScreen(
             item {
                 SectionCard(title = "3. Order Items") {
                     Text(
-                        text = "Quick Select from Menu:",
+                        text = "Add Item",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    // Quick Select Chips
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    // Unified Add Item: Name + Price + Suggestions + Add button
+                    var localName by remember { mutableStateOf("") }
+                    var localPrice by remember { mutableStateOf("") }
+                    var suggestionsExpanded by remember { mutableStateOf(false) }
+                    val suggestionResults = remember(localName, menuList) {
+                        if (localName.isBlank()) emptyList() else menuList.filter { it.name.contains(localName, ignoreCase = true) }.take(50)
+                    }
+
+                    OutlinedTextField(
+                        value = localName,
+                        onValueChange = {
+                            localName = it
+                            suggestionsExpanded = it.isNotBlank() && suggestionResults.isNotEmpty()
+                        },
+                        label = { Text("Item / Dish Name *") },
+                        placeholder = { Text("Type or select from menu") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
+                    )
+
+                    DropdownMenu(
+                        expanded = suggestionsExpanded,
+                        onDismissRequest = { suggestionsExpanded = false },
+                        modifier = Modifier.fillMaxWidth(0.95f)
                     ) {
-                        menuList.take(6).forEach { menuItem ->
-                            AssistChip(
-                                onClick = {
-                                    val existingIndex = formState.items.indexOfFirst { it.itemName == menuItem.name }
-                                    val updatedItems = formState.items.toMutableList()
-                                    if (existingIndex >= 0) {
-                                        val existing = updatedItems[existingIndex]
-                                        updatedItems[existingIndex] = existing.copy(quantity = existing.quantity + 1)
-                                    } else {
-                                        updatedItems.add(OrderItemForm(
-                                            id = menuItem.menuItemId,
-                                            itemName = menuItem.name,
-                                            unitPrice = menuItem.defaultPrice,
-                                            quantity = 1
-                                        ))
+                        suggestionResults.forEach { menuItem ->
+                            DropdownMenuItem(text = {
+                                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                    Column {
+                                        Text(menuItem.name, fontWeight = FontWeight.Bold)
+                                        Text(formatCurrency(menuItem.defaultPrice), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
-                                    onFormStateChanged(formState.copy(items = updatedItems))
-                                },
-                                label = { Text("+ ${menuItem.name} (${formatCurrency(menuItem.defaultPrice)})", fontSize = 11.sp) },
-                                colors = AssistChipDefaults.assistChipColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                                ),
-                                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                            )
+                                }
+                            }, onClick = {
+                                localName = menuItem.name
+                                localPrice = if (menuItem.defaultPrice == 0.0) "" else menuItem.defaultPrice.toString()
+                                suggestionsExpanded = false
+                            })
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = localPrice,
+                        onValueChange = { localPrice = it },
+                        label = { Text("Price per unit (₹) *") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Button(onClick = {
+                        val price = localPrice.toDoubleOrNull() ?: 0.0
+                        if (localName.isNotBlank() && price > 0) {
+                            // Determine if a menu item was selected
+                            val matched = menuList.firstOrNull { it.name.equals(localName, ignoreCase = true) && it.defaultPrice == price }
+                            val menuId = matched?.menuItemId
+                            onFormStateChanged(formState.copy(items = formState.items + OrderItemForm(
+                                itemName = localName,
+                                unitPrice = price,
+                                quantity = 1,
+                                menuItemId = menuId,
+                                isCustom = menuId == null
+                            )))
+                            localName = ""
+                            localPrice = ""
+                        }
+                    }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp), colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)) {
+                        Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Add Item")
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))
@@ -662,57 +708,6 @@ fun OrderCreateEditScreen(
         }
     }
 
-    // Custom Item Dialog
-    if (showCustomItemDialog) {
-        AlertDialog(
-            onDismissRequest = { showCustomItemDialog = false },
-            title = { Text("Add Custom Item", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(
-                        value = customItemName,
-                        onValueChange = { customItemName = it },
-                        label = { Text("Item / Dish Name *") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = customItemPrice,
-                        onValueChange = { customItemPrice = it },
-                        label = { Text("Price per unit (₹) *") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val price = customItemPrice.toDoubleOrNull() ?: 0.0
-                        if (customItemName.isNotBlank() && price > 0) {
-                            onFormStateChanged(formState.copy(items = formState.items + OrderItemForm(
-                                itemName = customItemName,
-                                unitPrice = price,
-                                quantity = 1
-                            )))
-                            customItemName = ""
-                            customItemPrice = ""
-                            showCustomItemDialog = false
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
-                ) {
-                    Text("Add Item")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCustomItemDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
 
     // Date Picker Dialog
     if (showDatePicker) {
