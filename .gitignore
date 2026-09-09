@@ -22,3 +22,6 @@ Thumbs.db
 # Generated reports
 captures/
 .fake
+
+# Firebase service account files
+*.google-services.json

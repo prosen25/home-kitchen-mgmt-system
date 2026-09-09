@@ -18,7 +18,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.google.firebase.auth.FirebaseAuth
 import com.kitchentwenty2.domain.model.DashboardNavigationItem
+import com.kitchentwenty2.ui.screens.auth.LoginScreen
+import com.kitchentwenty2.ui.screens.auth.LoginViewModel
 import com.kitchentwenty2.ui.screens.dashboard.DashboardScreen
 import com.kitchentwenty2.ui.screens.dashboard.DashboardViewModel
 import com.kitchentwenty2.ui.screens.expense.ExpenseEntryScreen
@@ -34,6 +37,7 @@ import com.kitchentwenty2.ui.screens.reports.ReportsHistoryViewModel
 import com.kitchentwenty2.util.DateTimeUtils
 
 sealed class Screen(val route: String) {
+    data object Login : Screen("login")
     data object Dashboard : Screen("dashboard")
     data object CreateOrder : Screen("order/create")
     data object EditOrder : Screen("order/edit/{orderId}") {
@@ -83,13 +87,54 @@ fun AppNavigation(
         context.startActivity(Intent.createChooser(intent, "Share Delivery Info"))
     }
 
+    val startDestination = if (FirebaseAuth.getInstance().currentUser != null) {
+        Screen.Dashboard.route
+    } else {
+        Screen.Login.route
+    }
+
     NavHost(
         navController = navController,
-        startDestination = Screen.Dashboard.route,
+        startDestination = startDestination,
         modifier = modifier
     ) {
+        composable(Screen.Login.route) {
+            val viewModel: LoginViewModel = hiltViewModel()
+            val uiState by viewModel.uiState.collectAsState()
+
+            LoginScreen(
+                uiState = uiState,
+                onEmailChanged = viewModel::onEmailChanged,
+                onPasswordChanged = viewModel::onPasswordChanged,
+                onSignInClick = viewModel::signInWithEmailPassword,
+                onGoogleSignInResult = { idToken ->
+                    if (idToken.isNotBlank()) {
+                        viewModel.signInWithGoogle(idToken)
+                    }
+                }
+            )
+
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser != null) {
+                LaunchedEffect(currentUser.uid) {
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                }
+            }
+        }
+
         // Screen 1: Dashboard / Home Screen
         composable(Screen.Dashboard.route) {
+            if (FirebaseAuth.getInstance().currentUser == null) {
+                LaunchedEffect(Unit) {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Dashboard.route) { inclusive = true }
+                    }
+                }
+                return@composable
+            }
+
             val viewModel: DashboardViewModel = hiltViewModel()
             val uiState by viewModel.uiState.collectAsState()
 

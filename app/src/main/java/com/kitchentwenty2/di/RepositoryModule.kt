@@ -2,8 +2,10 @@ package com.kitchentwenty2.di
 
 import com.kitchentwenty2.data.repository.CustomerRepositoryImpl
 import com.kitchentwenty2.data.repository.ExpenseRepositoryImpl
+import com.kitchentwenty2.data.repository.FirebaseAuthRepositoryImpl
 import com.kitchentwenty2.data.repository.MenuRepositoryImpl
 import com.kitchentwenty2.data.repository.OrderRepositoryImpl
+import com.kitchentwenty2.domain.repository.AuthRepository
 import com.kitchentwenty2.domain.repository.CustomerRepository
 import com.kitchentwenty2.domain.repository.ExpenseRepository
 import com.kitchentwenty2.domain.repository.MenuRepository
@@ -17,6 +19,12 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(
+        impl: FirebaseAuthRepositoryImpl
+    ): AuthRepository
 
     @Binds
     @Singleton

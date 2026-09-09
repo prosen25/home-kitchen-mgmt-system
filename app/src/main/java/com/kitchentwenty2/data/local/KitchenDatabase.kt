@@ -11,6 +11,7 @@ import com.kitchentwenty2.data.local.dao.CustomerDao
 import com.kitchentwenty2.data.local.dao.ExpenseDao
 import com.kitchentwenty2.data.local.dao.MenuItemDao
 import com.kitchentwenty2.data.local.dao.OrderDao
+import com.kitchentwenty2.data.local.dao.SyncMetadataDao
 import com.kitchentwenty2.data.local.entity.AppErrorLogEntity
 import com.kitchentwenty2.data.local.entity.CustomerEntity
 import com.kitchentwenty2.data.local.entity.ExpenseEntity
@@ -31,9 +32,11 @@ import kotlinx.coroutines.launch
         OrderItemEntity::class,
         PaymentLogEntity::class,
         ExpenseEntity::class,
-        AppErrorLogEntity::class
+        AppErrorLogEntity::class,
+        com.kitchentwenty2.data.local.entity.SyncQueueEntity::class,
+        com.kitchentwenty2.data.local.entity.SyncMetadataEntity::class
     ],
-    version = 2,
+    version = 4,
     exportSchema = true
 )
 abstract class KitchenDatabase : RoomDatabase() {
@@ -42,6 +45,8 @@ abstract class KitchenDatabase : RoomDatabase() {
     abstract fun orderDao(): OrderDao
     abstract fun expenseDao(): ExpenseDao
     abstract fun appErrorLogDao(): AppErrorLogDao
+    abstract fun syncQueueDao(): com.kitchentwenty2.data.local.dao.SyncQueueDao
+    abstract fun syncMetadataDao(): SyncMetadataDao
 
     companion object {
         const val DATABASE_NAME = "kitchen_twenty2_db"
@@ -53,13 +58,29 @@ abstract class KitchenDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `sync_queue` (`syncId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `operationType` TEXT NOT NULL, `collectionName` TEXT NOT NULL, `documentId` TEXT, `payload` TEXT NOT NULL, `createdBy` TEXT, `createdDateTimeStamp` INTEGER NOT NULL, `attempts` INTEGER NOT NULL, `lastError` TEXT)"
+                )
+            }
+        }
+
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `sync_metadata` (`key` TEXT NOT NULL, `collectionName` TEXT, `lastSyncedAt` INTEGER, `pendingCount` INTEGER NOT NULL, `lastError` TEXT, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`key`))"
+                )
+            }
+        }
+
         fun create(context: Context): KitchenDatabase {
             return Room.databaseBuilder(
                 context.applicationContext,
                 KitchenDatabase::class.java,
                 DATABASE_NAME
             )
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
         }
     }
