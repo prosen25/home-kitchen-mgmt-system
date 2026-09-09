@@ -25,6 +25,12 @@ class MenuRepositoryImpl @Inject constructor(
             .flowOn(Dispatchers.IO)
     }
 
+    override fun searchMenuItems(query: String): Flow<List<MenuItemModel>> {
+        return menuItemDao.searchMenuItems(query)
+            .map { list -> list.map { it.toDomain() } }
+            .flowOn(Dispatchers.IO)
+    }
+
     override suspend fun addMenuItem(
         name: String,
         defaultPrice: Double,

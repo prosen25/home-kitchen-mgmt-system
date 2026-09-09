@@ -36,7 +36,7 @@ import kotlinx.coroutines.launch
         com.kitchentwenty2.data.local.entity.SyncQueueEntity::class,
         com.kitchentwenty2.data.local.entity.SyncMetadataEntity::class
     ],
-    version = 4,
+version = 5,
     exportSchema = true
 )
 abstract class KitchenDatabase : RoomDatabase() {
@@ -74,13 +74,21 @@ abstract class KitchenDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Add menuItemId (nullable) and isCustom flag (default 0) to order_items
+                db.execSQL("ALTER TABLE `order_items` ADD COLUMN `menuItemId` INTEGER")
+                db.execSQL("ALTER TABLE `order_items` ADD COLUMN `isCustom` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun create(context: Context): KitchenDatabase {
             return Room.databaseBuilder(
                 context.applicationContext,
                 KitchenDatabase::class.java,
                 DATABASE_NAME
             )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build()
         }
     }

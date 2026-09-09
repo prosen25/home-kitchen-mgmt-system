@@ -122,15 +122,15 @@ class OrderCreateEditViewModel @Inject constructor(
         _formState.update { it.copy(googleLocationUrl = url) }
     }
 
-    fun addItem(name: String, price: Double) {
+    fun addItem(name: String, price: Double, menuItemId: Long? = null, isCustom: Boolean = false) {
         _formState.update { current ->
-            val existingIndex = current.items.indexOfFirst { it.itemName.equals(name, ignoreCase = true) }
+            val existingIndex = current.items.indexOfFirst { it.itemName.equals(name, ignoreCase = true) && it.unitPrice == price }
             val newItems = current.items.toMutableList()
             if (existingIndex >= 0) {
                 val existing = newItems[existingIndex]
                 newItems[existingIndex] = existing.copy(quantity = existing.quantity + 1)
             } else {
-                newItems.add(OrderItemForm(itemName = name, unitPrice = price, quantity = 1))
+                newItems.add(OrderItemForm(itemName = name, unitPrice = price, quantity = 1, menuItemId = menuItemId, isCustom = isCustom))
             }
             current.copy(items = newItems)
         }

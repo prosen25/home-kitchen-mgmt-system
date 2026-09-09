@@ -26,6 +26,10 @@ data class OrderItemEntity(
     val quantity: Int,
     val subtotal: Double, // Calculated as unitPrice * quantity
 
+    // Link to Master Menu (nullable for custom items)
+    val menuItemId: Long? = null,
+    val isCustom: Boolean = false,
+
     // Technical Audit Attributes
     val createdBy: String = "SYSTEM",
     val createdDateTimeStamp: Long = System.currentTimeMillis(),
