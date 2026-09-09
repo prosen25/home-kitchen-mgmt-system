@@ -135,3 +135,29 @@ dependencies {
 
 ### 3. Error Logging & Exception Handling:
 - Global and local exceptions caught in ViewModels or DAOs should be dispatched to `AppErrorLogDao` via an error logger utility to populate `AppErrorLogEntity`.
+
+## 5. Design, Branding & Visual Assets
+
+* **Brand Color Palette:** Primary theme is **Blue**.
+    * Primary Accent: `0xFF1E88E5` (Defined in `ui/theme/Color.kt`)
+    * Container / Card Tint: `0xFFE3F2FD`
+    * Theme implementation resides in `ui/theme/Theme.kt` using Material Design 3 (`MaterialTheme`).
+* **Static Assets & Logo:**
+    * App logo asset located at `app/src/main/res/`.
+
+## 6. Authentication & Cloud Synchronization (Multi-User & Multi-Device)
+
+* **Authentication:** Firebase Authentication (Email/Password or Google Sign-In)
+  * Every write operation must stamp `createdBy` with the logged-in user's `uid` or email.
+* **Remote Database & Sync Engine:** Firebase Cloud Firestore
+  * Enable offline persistence (`FirebaseFirestoreSettings.Builder().setLocalCacheSettings(...)`).
+  * Live updates across devices must use Firestore snapshot listeners (`addSnapshotListener`) mapped to Kotlin `Flow` in repositories.
+* **Data Conflict Strategy:** "Last Write Wins" based on `modifiedDateTimeStamp`.
+
+## 7. Firestore Database Structure
+
+* `users/{userId}` — User profile, display name, and role (e.g., Cashier, Kitchen Staff).
+* `orders/{orderId}` — Order documents including snapshot customer data, order items sub-array, and settlement status.
+* `customers/{customerId}` — Central customer list for phone/address autocompletion.
+* `expenses/{expenseId}` — Daily operational expense logs.
+* `payment_logs/{paymentId}` — Detailed payment transactions per order.
