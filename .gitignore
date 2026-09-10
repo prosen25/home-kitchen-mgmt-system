@@ -26,5 +26,5 @@ captures/
 # Firebase service account files
 */google-services.json
 
-# Environment variables file
+# Environment variable files
 .env

@@ -39,7 +39,10 @@ import com.kitchentwenty2.util.DateTimeUtils
 sealed class Screen(val route: String) {
     data object Login : Screen("login")
     data object Dashboard : Screen("dashboard")
-    data object CreateOrder : Screen("order/create")
+    data object CreateOrder : Screen("order/create?defaultDateMillis={defaultDateMillis}") {
+        fun createRoute(defaultDateMillis: Long? = null) =
+            if (defaultDateMillis != null) "order/create?defaultDateMillis=$defaultDateMillis" else "order/create"
+    }
     data object EditOrder : Screen("order/edit/{orderId}") {
         fun createRoute(orderId: Long) = "order/edit/$orderId"
     }
@@ -48,7 +51,10 @@ sealed class Screen(val route: String) {
     }
     data object MenuSetup : Screen("menu/setup")
     data object ReportsHistory : Screen("reports/history")
-    data object AddExpense : Screen("expense/add")
+    data object AddExpense : Screen("expense/add?defaultDateMillis={defaultDateMillis}") {
+        fun createRoute(defaultDateMillis: Long? = null) =
+            if (defaultDateMillis != null) "expense/add?defaultDateMillis=$defaultDateMillis" else "expense/add"
+    }
     data object EditExpense : Screen("expense/edit/{expenseId}") {
         fun createRoute(expenseId: Long) = "expense/edit/$expenseId"
     }
@@ -149,25 +155,15 @@ fun AppNavigation(
                     shareLocation(order.deliveryAddress, order.googleLocationUrl ?: "")
                 },
                 onNewOrderClick = {
-                    // Pass current dashboard selected date to the Create Order screen via SavedStateHandle
-                    try {
-                        val currentDate = viewModel.selectedDateMillis.value
-                        navController.currentBackStackEntry?.savedStateHandle?.set("defaultDateMillis", currentDate)
-                    } catch (_: Exception) {
-                        // ignore if unavailable
-                    }
-                    navController.navigate(Screen.CreateOrder.route)
+                    navController.navigate(
+                        Screen.CreateOrder.createRoute(viewModel.selectedDateMillis.value)
+                    )
                 },
 
                 onNewExpenseClick = {
-                    // Pass current dashboard selected date to the Add Expense screen via SavedStateHandle
-                    try {
-                        val currentDate = viewModel.selectedDateMillis.value
-                        navController.currentBackStackEntry?.savedStateHandle?.set("defaultDateMillis", currentDate)
-                    } catch (_: Exception) {
-                        // ignore if unavailable
-                    }
-                    navController.navigate(Screen.AddExpense.route)
+                    navController.navigate(
+                        Screen.AddExpense.createRoute(viewModel.selectedDateMillis.value)
+                    )
                 },
 
                 onNavigate = { destination ->
@@ -193,7 +189,15 @@ fun AppNavigation(
         }
 
         // Screen 2: Create Order
-        composable(Screen.CreateOrder.route) {
+        composable(
+            route = Screen.CreateOrder.route,
+            arguments = listOf(
+                navArgument("defaultDateMillis") {
+                    type = NavType.LongType
+                    defaultValue = -1L
+                }
+            )
+        ) {
             val viewModel: OrderCreateEditViewModel = hiltViewModel()
             val formState by viewModel.formState.collectAsState()
             val menuItems by viewModel.menuItems.collectAsState()
@@ -306,11 +310,19 @@ fun AppNavigation(
         }
 
         // Screen 6: Expense Entry Screen / Modal
-        composable(Screen.AddExpense.route) {
+        composable(
+            route = Screen.AddExpense.route,
+            arguments = listOf(
+                navArgument("defaultDateMillis") {
+                    type = NavType.LongType
+                    defaultValue = -1L
+                }
+            )
+        ) { backStackEntry ->
             val viewModel: ExpenseEntryViewModel = hiltViewModel()
-
-            // Read default date passed from dashboard (if any)
-            val defaultDateMillis: Long? = navController.currentBackStackEntry?.savedStateHandle?.get<Long>("defaultDateMillis")
+            val defaultDateMillis = backStackEntry.arguments
+                ?.getLong("defaultDateMillis")
+                ?.takeIf { it > 0L }
 
             ExpenseEntryScreen(
                 onDismiss = { navController.popBackStack() },

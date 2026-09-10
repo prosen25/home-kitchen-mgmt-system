@@ -39,7 +39,7 @@ class OrderCreateEditViewModel @Inject constructor(
         OrderFormState(
             isEditMode = orderIdToEdit != null,
             orderId = orderIdToEdit ?: 0L,
-            orderDate = savedStateHandle.get<Long>("defaultDateMillis")?.let { DateTimeUtils.formatDate(it) }
+            orderDate = savedStateHandle.get<Long>("defaultDateMillis")?.takeIf { it > 0L }?.let { DateTimeUtils.formatDate(it) }
                 ?: DateTimeUtils.formatDate(System.currentTimeMillis())
         )
     )
@@ -77,7 +77,7 @@ class OrderCreateEditViewModel @Inject constructor(
                             googleLocationUrl = d.googleLocationUrl,
                             items = d.items,
                             upfrontDiscount = d.upfrontDiscount,
-                            advancePayment = d.totalCollected
+                            advancePayment = d.advancePaid
                         )
                     }
                 }
