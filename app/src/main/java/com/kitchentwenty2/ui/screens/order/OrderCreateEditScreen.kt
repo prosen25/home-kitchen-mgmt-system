@@ -429,38 +429,40 @@ fun OrderCreateEditScreen(
                         if (localName.isBlank()) emptyList() else menuList.filter { it.name.contains(localName, ignoreCase = true) }.take(50)
                     }
 
-                    OutlinedTextField(
-                        value = localName,
-                        onValueChange = {
-                            localName = it
-                            suggestionsExpanded = it.isNotBlank() && suggestionResults.isNotEmpty()
-                        },
-                        label = { Text("Item / Dish Name *") },
-                        placeholder = { Text("Type or select from menu") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
-                    )
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = localName,
+                            onValueChange = {
+                                localName = it
+                                suggestionsExpanded = it.isNotBlank() && suggestionResults.isNotEmpty()
+                            },
+                            label = { Text("Item / Dish Name *") },
+                            placeholder = { Text("Type or select from menu") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
+                        )
 
-                    DropdownMenu(
-                        expanded = suggestionsExpanded,
-                        onDismissRequest = { suggestionsExpanded = false },
-                        modifier = Modifier.fillMaxWidth(0.95f)
-                    ) {
-                        suggestionResults.forEach { menuItem ->
-                            DropdownMenuItem(text = {
-                                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                                    Column {
-                                        Text(menuItem.name, fontWeight = FontWeight.Bold)
-                                        Text(formatCurrency(menuItem.defaultPrice), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        DropdownMenu(
+                            expanded = suggestionsExpanded,
+                            onDismissRequest = { suggestionsExpanded = false },
+                            modifier = Modifier.fillMaxWidth(0.95f)
+                        ) {
+                            suggestionResults.forEach { menuItem ->
+                                DropdownMenuItem(text = {
+                                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                        Column {
+                                            Text(menuItem.name, fontWeight = FontWeight.Bold)
+                                            Text(formatCurrency(menuItem.defaultPrice), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
                                     }
-                                }
-                            }, onClick = {
-                                localName = menuItem.name
-                                localPrice = if (menuItem.defaultPrice == 0.0) "" else menuItem.defaultPrice.toString()
-                                suggestionsExpanded = false
-                            })
+                                }, onClick = {
+                                    localName = menuItem.name
+                                    localPrice = if (menuItem.defaultPrice == 0.0) "" else menuItem.defaultPrice.toString()
+                                    suggestionsExpanded = false
+                                })
+                            }
                         }
                     }
 
