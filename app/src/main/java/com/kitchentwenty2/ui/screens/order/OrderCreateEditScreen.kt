@@ -288,7 +288,7 @@ fun OrderCreateEditScreen(
 
                         // Autocomplete Dropdown
                         DropdownMenu(
-                            expanded = isAutoCompleteExpanded,
+                            expanded = isAutoCompleteExpanded && matchingCustomers.isNotEmpty(),
                             onDismissRequest = { isAutoCompleteExpanded = false },
                             modifier = Modifier.fillMaxWidth(0.9f),
                             properties = PopupProperties(focusable = false)
@@ -447,7 +447,7 @@ fun OrderCreateEditScreen(
                         )
 
                         DropdownMenu(
-                            expanded = suggestionsExpanded,
+                            expanded = suggestionsExpanded && suggestionResults.isNotEmpty(),
                             onDismissRequest = { suggestionsExpanded = false },
                             modifier = Modifier.fillMaxWidth(0.95f),
                             properties = PopupProperties(focusable = false)
