@@ -73,6 +73,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -420,19 +422,20 @@ fun OrderCreateEditScreen(
                     Spacer(modifier = Modifier.height(6.dp))
 
                     // Unified Add Item: Name + Price + Suggestions + Add button
-                    var localName by remember { mutableStateOf("") }
+                    var localNameField by remember { mutableStateOf(TextFieldValue("")) }
                     var localPrice by remember { mutableStateOf("") }
                     var suggestionsExpanded by remember { mutableStateOf(false) }
+                    val localName = localNameField.text
                     val suggestionResults = remember(localName, menuList) {
                         if (localName.isBlank()) emptyList() else menuList.filter { it.name.contains(localName, ignoreCase = true) }.take(50)
                     }
 
                     Box(modifier = Modifier.fillMaxWidth()) {
                         OutlinedTextField(
-                            value = localName,
+                            value = localNameField,
                             onValueChange = {
-                                localName = it
-                                suggestionsExpanded = it.isNotBlank() && suggestionResults.isNotEmpty()
+                                localNameField = it
+                                suggestionsExpanded = it.text.isNotBlank()
                             },
                             label = { Text("Item / Dish Name *") },
                             placeholder = { Text("Type or select from menu") },
@@ -457,7 +460,10 @@ fun OrderCreateEditScreen(
                                         }
                                     }
                                 }, onClick = {
-                                    localName = menuItem.name
+                                    localNameField = TextFieldValue(
+                                        text = menuItem.name,
+                                        selection = TextRange(menuItem.name.length)
+                                    )
                                     localPrice = if (menuItem.defaultPrice == 0.0) "" else menuItem.defaultPrice.toString()
                                     suggestionsExpanded = false
                                 })
@@ -492,7 +498,7 @@ fun OrderCreateEditScreen(
                                 menuItemId = menuId,
                                 isCustom = menuId == null
                             )))
-                            localName = ""
+                            localNameField = TextFieldValue("")
                             localPrice = ""
                         }
                     }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp), colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)) {
@@ -764,4 +770,3 @@ fun OrderCreateEditScreenPreview() {
 
 private fun Double.toInputString(): String =
     if (this == 0.0) "" else toString()
-
