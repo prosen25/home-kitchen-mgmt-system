@@ -24,6 +24,17 @@ data class FirestoreCustomer(
     val modifiedAt: Timestamp? = null
 )
 
+data class FirestoreMenuItem(
+    val id: String = "",
+    val name: String = "",
+    val category: String = "Main Course",
+    val description: String? = null,
+    val defaultPrice: Double = 0.0,
+    val createdBy: String? = null,
+    val createdAt: Timestamp? = null,
+    val modifiedAt: Timestamp? = null
+)
+
 data class FirestoreOrderItem(
     val itemId: String = "",
     val itemName: String = "",

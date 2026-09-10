@@ -2,6 +2,8 @@ package com.kitchentwenty2.data.repository
 
 import com.kitchentwenty2.data.local.dao.MenuItemDao
 import com.kitchentwenty2.data.local.entity.MenuItemEntity
+import com.kitchentwenty2.data.remote.firestore.FirestoreMenuItem
+import com.kitchentwenty2.data.remote.firestore.FirestoreMenuRepository
 import com.kitchentwenty2.domain.model.MenuItemModel
 import com.kitchentwenty2.domain.repository.MenuRepository
 import com.kitchentwenty2.util.AppErrorLogger
@@ -16,6 +18,7 @@ import javax.inject.Singleton
 @Singleton
 class MenuRepositoryImpl @Inject constructor(
     private val menuItemDao: MenuItemDao,
+    private val firestoreMenuRepository: FirestoreMenuRepository,
     private val errorLogger: AppErrorLogger
 ) : MenuRepository {
 
@@ -46,7 +49,9 @@ class MenuRepositoryImpl @Inject constructor(
                     createdDateTimeStamp = System.currentTimeMillis(),
                     modifiedDateTimeStamp = System.currentTimeMillis()
                 )
-                menuItemDao.insertMenuItem(entity)
+                val itemId = menuItemDao.insertMenuItem(entity)
+                syncMenuItemUpsert(entity.copy(menuItemId = itemId), category)
+                itemId
             } catch (e: Exception) {
                 errorLogger.logException(e, "MenuRepository.addMenuItem")
                 -1L
@@ -66,6 +71,7 @@ class MenuRepositoryImpl @Inject constructor(
                         modifiedDateTimeStamp = System.currentTimeMillis()
                     )
                     menuItemDao.updateMenuItem(updated)
+                    syncMenuItemUpsert(updated, item.category)
                 }
             } catch (e: Exception) {
                 errorLogger.logException(e, "MenuRepository.updateMenuItem")
@@ -77,10 +83,24 @@ class MenuRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 menuItemDao.deleteMenuItemById(itemId)
+                firestoreMenuRepository.deleteMenuItem(itemId.toString())
             } catch (e: Exception) {
                 errorLogger.logException(e, "MenuRepository.deleteMenuItem")
             }
         }
+    }
+
+    private suspend fun syncMenuItemUpsert(item: MenuItemEntity, category: String) {
+        firestoreMenuRepository.createOrUpdateMenuItem(
+            FirestoreMenuItem(
+                id = item.menuItemId.toString(),
+                name = item.name,
+                category = category,
+                description = item.description,
+                defaultPrice = item.defaultPrice,
+                createdBy = item.createdBy
+            )
+        )
     }
 
     private fun MenuItemEntity.toDomain() = MenuItemModel(

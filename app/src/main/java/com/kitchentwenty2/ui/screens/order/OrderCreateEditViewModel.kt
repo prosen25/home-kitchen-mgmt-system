@@ -12,19 +12,15 @@ import com.kitchentwenty2.domain.repository.MenuRepository
 import com.kitchentwenty2.domain.repository.OrderRepository
 import com.kitchentwenty2.util.DateTimeUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class OrderCreateEditViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
@@ -48,12 +44,7 @@ class OrderCreateEditViewModel @Inject constructor(
     val menuItems: StateFlow<List<MenuItemModel>> = menuRepository.getAllMenuItems()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _customerSearchQuery = MutableStateFlow("")
-    val customerSuggestions: StateFlow<List<CustomerProfile>> = _customerSearchQuery
-        .flatMapLatest { query ->
-            if (query.length >= 2) customerRepository.searchCustomers(query)
-            else flowOf(emptyList())
-        }
+    val customerProfiles: StateFlow<List<CustomerProfile>> = customerRepository.getAllCustomers()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
@@ -95,7 +86,6 @@ class OrderCreateEditViewModel @Inject constructor(
 
     fun onCustomerNameChanged(name: String) {
         _formState.update { it.copy(customerName = name) }
-        _customerSearchQuery.value = name
     }
 
     fun selectCustomer(profile: CustomerProfile) {
@@ -107,7 +97,6 @@ class OrderCreateEditViewModel @Inject constructor(
                 googleLocationUrl = profile.googleLocationUrl ?: ""
             )
         }
-        _customerSearchQuery.value = ""
     }
 
     fun onMobileChanged(mobile: String) {

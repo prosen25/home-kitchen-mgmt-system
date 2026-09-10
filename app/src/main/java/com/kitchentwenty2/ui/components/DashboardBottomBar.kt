@@ -2,6 +2,7 @@ package com.kitchentwenty2.ui.components
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material3.Icon
@@ -73,7 +74,30 @@ fun DashboardBottomBar(
             )
         )
 
-        // Destination 3: Reports / History
+        // Destination 3: Customers
+        NavigationBarItem(
+            selected = selectedItem == DashboardNavigationItem.CUSTOMERS,
+            onClick = { onItemSelected(DashboardNavigationItem.CUSTOMERS) },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Groups,
+                    contentDescription = "Customers"
+                )
+            },
+            label = {
+                Text(
+                    text = "Customers",
+                    fontWeight = if (selectedItem == DashboardNavigationItem.CUSTOMERS) FontWeight.Bold else FontWeight.Normal
+                )
+            },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = MaterialTheme.colorScheme.primary,
+                selectedTextColor = MaterialTheme.colorScheme.primary,
+                indicatorColor = MaterialTheme.colorScheme.primaryContainer
+            )
+        )
+
+        // Destination 4: Reports / History
         NavigationBarItem(
             selected = selectedItem == DashboardNavigationItem.REPORTS,
             onClick = { onItemSelected(DashboardNavigationItem.REPORTS) },

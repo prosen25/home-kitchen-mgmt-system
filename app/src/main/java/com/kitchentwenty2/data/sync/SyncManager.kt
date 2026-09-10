@@ -4,6 +4,8 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkRequest
+import android.util.Log
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.kitchentwenty2.data.local.KitchenDatabase
@@ -55,6 +57,11 @@ class SyncManager @Inject constructor(
     }
 
     suspend fun processQueue() {
+        if (FirebaseAuth.getInstance().currentUser == null) {
+            Log.w("FirestoreSync", "Skipping sync queue processing because no Firebase user is authenticated yet.")
+            return
+        }
+
         val dao = database.syncQueueDao()
         val pending = dao.getAllPending()
         for (item in pending) {

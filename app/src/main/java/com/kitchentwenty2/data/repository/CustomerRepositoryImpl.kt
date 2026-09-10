@@ -2,6 +2,8 @@ package com.kitchentwenty2.data.repository
 
 import com.kitchentwenty2.data.local.dao.CustomerDao
 import com.kitchentwenty2.data.local.entity.CustomerEntity
+import com.kitchentwenty2.data.remote.firestore.FirestoreCustomer
+import com.kitchentwenty2.data.remote.firestore.FirestoreCustomerRepository
 import com.kitchentwenty2.domain.model.CustomerProfile
 import com.kitchentwenty2.domain.repository.CustomerRepository
 import com.kitchentwenty2.util.AppErrorLogger
@@ -16,6 +18,7 @@ import javax.inject.Singleton
 @Singleton
 class CustomerRepositoryImpl @Inject constructor(
     private val customerDao: CustomerDao,
+    private val firestoreCustomerRepository: FirestoreCustomerRepository,
     private val errorLogger: AppErrorLogger
 ) : CustomerRepository {
 
@@ -42,7 +45,27 @@ class CustomerRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun saveOrUpdateCustomer(
+    override suspend fun findCustomerByMobileOrName(mobile: String, name: String): CustomerProfile? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val normalizedMobile = normalizeMobile(mobile)
+                val normalizedName = normalizeName(name)
+                val customers = customerDao.getAllCustomersSnapshot()
+
+                val byMobile = normalizedMobile.takeIf { it.isNotBlank() }?.let { targetMobile ->
+                    customers.firstOrNull { normalizeMobile(it.mobileNumber) == targetMobile }
+                }
+
+                val match = byMobile ?: customers.firstOrNull { normalizeName(it.name) == normalizedName }
+                match?.toDomain()
+            } catch (e: Exception) {
+                errorLogger.logException(e, "CustomerRepository.findCustomerByMobileOrName")
+                null
+            }
+        }
+    }
+
+    override suspend fun createCustomer(
         name: String,
         phone: String?,
         address: String?,
@@ -50,32 +73,86 @@ class CustomerRepositoryImpl @Inject constructor(
     ): Long {
         return withContext(Dispatchers.IO) {
             try {
-                val existing = customerDao.getCustomerByName(name.trim())
-                if (existing != null) {
-                    val updated = existing.copy(
-                        mobileNumber = phone ?: existing.mobileNumber,
-                        address = address ?: existing.address,
-                        googleLocationUrl = locationUrl ?: existing.googleLocationUrl,
-                        modifiedDateTimeStamp = System.currentTimeMillis()
-                    )
-                    customerDao.updateCustomer(updated)
-                    existing.customerId
-                } else {
-                    val entity = CustomerEntity(
-                        name = name.trim(),
-                        mobileNumber = phone,
-                        address = address,
-                        googleLocationUrl = locationUrl,
-                        createdDateTimeStamp = System.currentTimeMillis(),
-                        modifiedDateTimeStamp = System.currentTimeMillis()
-                    )
-                    customerDao.insertCustomer(entity)
-                }
+                val now = System.currentTimeMillis()
+                val entity = CustomerEntity(
+                    name = name.trim(),
+                    mobileNumber = phone?.trim().takeUnless { it.isNullOrBlank() },
+                    address = address?.trim().takeUnless { it.isNullOrBlank() },
+                    googleLocationUrl = locationUrl?.trim().takeUnless { it.isNullOrBlank() },
+                    createdDateTimeStamp = now,
+                    modifiedDateTimeStamp = now
+                )
+                val customerId = customerDao.insertCustomer(entity)
+                syncCustomerUpsert(entity.copy(customerId = customerId))
+                customerId
             } catch (e: Exception) {
-                errorLogger.logException(e, "CustomerRepository.saveOrUpdateCustomer")
+                errorLogger.logException(e, "CustomerRepository.createCustomer")
                 -1L
             }
         }
+    }
+
+    override suspend fun updateCustomer(
+        customerId: Long,
+        name: String,
+        phone: String?,
+        address: String?,
+        locationUrl: String?
+    ): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val existing = customerDao.getCustomerById(customerId) ?: return@withContext false
+                val updated = existing.copy(
+                    name = name.trim(),
+                    mobileNumber = phone?.trim().takeUnless { it.isNullOrBlank() },
+                    address = address?.trim().takeUnless { it.isNullOrBlank() },
+                    googleLocationUrl = locationUrl?.trim().takeUnless { it.isNullOrBlank() },
+                    modifiedDateTimeStamp = System.currentTimeMillis()
+                )
+                customerDao.updateCustomer(updated)
+                syncCustomerUpsert(updated)
+                true
+            } catch (e: Exception) {
+                errorLogger.logException(e, "CustomerRepository.updateCustomer")
+                false
+            }
+        }
+    }
+
+    override suspend fun deleteCustomer(customerId: Long): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val deleted = customerDao.deleteCustomerById(customerId) > 0
+                if (deleted) {
+                    firestoreCustomerRepository.deleteCustomer(customerId.toString())
+                }
+                deleted
+            } catch (e: Exception) {
+                errorLogger.logException(e, "CustomerRepository.deleteCustomer")
+                false
+            }
+        }
+    }
+
+    private suspend fun syncCustomerUpsert(customer: CustomerEntity) {
+        firestoreCustomerRepository.createOrUpdateCustomer(
+            FirestoreCustomer(
+                id = customer.customerId.toString(),
+                name = customer.name,
+                mobileNumber = customer.mobileNumber,
+                address = customer.address,
+                googleLocationUrl = customer.googleLocationUrl,
+                createdBy = customer.createdBy
+            )
+        )
+    }
+
+    private fun normalizeMobile(mobile: String?): String {
+        return mobile.orEmpty().filter(Char::isDigit)
+    }
+
+    private fun normalizeName(name: String): String {
+        return name.trim().lowercase()
     }
 
     private fun CustomerEntity.toDomain() = CustomerProfile(

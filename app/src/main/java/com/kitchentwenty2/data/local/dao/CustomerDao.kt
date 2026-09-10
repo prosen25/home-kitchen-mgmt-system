@@ -10,11 +10,19 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CustomerDao {
-    @Query("SELECT * FROM customers WHERE name LIKE '%' || :query || '%' ORDER BY modifiedDateTimeStamp DESC")
+    @Query(
+        "SELECT * FROM customers " +
+            "WHERE name LIKE '%' || :query || '%' " +
+            "OR mobileNumber LIKE '%' || :query || '%' " +
+            "ORDER BY modifiedDateTimeStamp DESC"
+    )
     fun searchCustomers(query: String): Flow<List<CustomerEntity>>
 
     @Query("SELECT * FROM customers ORDER BY modifiedDateTimeStamp DESC")
     fun getAllCustomers(): Flow<List<CustomerEntity>>
+
+    @Query("SELECT * FROM customers ORDER BY modifiedDateTimeStamp DESC")
+    suspend fun getAllCustomersSnapshot(): List<CustomerEntity>
 
     @Query("SELECT * FROM customers WHERE customerId = :customerId LIMIT 1")
     suspend fun getCustomerById(customerId: Long): CustomerEntity?
@@ -27,4 +35,7 @@ interface CustomerDao {
 
     @Update
     suspend fun updateCustomer(customer: CustomerEntity)
+
+    @Query("DELETE FROM customers WHERE customerId = :customerId")
+    suspend fun deleteCustomerById(customerId: Long): Int
 }
