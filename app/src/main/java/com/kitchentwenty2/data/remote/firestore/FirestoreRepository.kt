@@ -19,6 +19,13 @@ interface FirestoreCustomerRepository {
     suspend fun deleteCustomer(id: String)
 }
 
+interface FirestoreMenuRepository {
+    fun listenAllMenuItems(): Flow<List<FirestoreMenuItem>>
+    suspend fun getMenuItem(id: String): FirestoreMenuItem?
+    suspend fun createOrUpdateMenuItem(menuItem: FirestoreMenuItem): String
+    suspend fun deleteMenuItem(id: String)
+}
+
 interface FirestoreOrderRepository {
     fun listenOrdersForDate(startOfDayMillis: Long, endOfDayMillis: Long): Flow<List<FirestoreOrder>>
     fun listenOrder(orderId: String): Flow<FirestoreOrder?>

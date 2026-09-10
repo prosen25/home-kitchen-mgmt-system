@@ -6,6 +6,10 @@ import com.kitchentwenty2.data.local.entity.OrderEntity
 import com.kitchentwenty2.data.local.entity.OrderItemEntity
 import com.kitchentwenty2.data.local.entity.PaymentLogEntity
 import com.kitchentwenty2.data.local.relation.OrderWithDetails
+import com.kitchentwenty2.data.remote.firestore.FirestoreCustomer
+import com.kitchentwenty2.data.remote.firestore.FirestoreOrder
+import com.kitchentwenty2.data.remote.firestore.FirestoreOrderItem
+import com.kitchentwenty2.data.remote.firestore.FirestoreOrderRepository
 import com.kitchentwenty2.domain.model.FinancialSummary
 import com.kitchentwenty2.domain.model.OrderDetailUiState
 import com.kitchentwenty2.domain.model.OrderFormState
@@ -50,6 +54,7 @@ class OrderRepositoryImpl @Inject constructor(
     private val orderDao: OrderDao,
     private val expenseDao: ExpenseDao,
     private val customerRepository: CustomerRepository,
+    private val firestoreOrderRepository: FirestoreOrderRepository,
     private val errorLogger: AppErrorLogger
 ) : OrderRepository {
 
@@ -70,8 +75,11 @@ class OrderRepositoryImpl @Inject constructor(
     override suspend fun saveOrder(orderForm: OrderFormState): Long {
         return withContext(Dispatchers.IO) {
             try {
-                // 1. Auto-save / update customer profile (User Story 1.2 AC 3)
-                val customerId = customerRepository.saveOrUpdateCustomer(
+                val existingCustomer = customerRepository.findCustomerByMobileOrName(
+                    mobile = orderForm.mobileNumber,
+                    name = orderForm.customerName
+                )
+                val customerId = existingCustomer?.customerId ?: customerRepository.createCustomer(
                     name = orderForm.customerName,
                     phone = orderForm.mobileNumber.ifBlank { null },
                     address = orderForm.address.ifBlank { null },
@@ -93,6 +101,7 @@ class OrderRepositoryImpl @Inject constructor(
                     val existingOrder = orderDao.getOrderById(orderForm.orderId)
                     if (existingOrder != null) {
                         val updated = existingOrder.copy(
+                            customerId = customerId.takeIf { it > 0 } ?: existingOrder.customerId,
                             customerName = orderForm.customerName.trim(),
                             customerPhone = orderForm.mobileNumber.ifBlank { null },
                             customerAddress = orderForm.address.ifBlank { null },
@@ -126,6 +135,8 @@ class OrderRepositoryImpl @Inject constructor(
                                 errorLogger.logException(e, "OrderRepository.adjustPaymentDatesOnEdit")
                             }
                         }
+
+                        orderDao.getOrderWithDetailsSnapshot(orderForm.orderId)?.let { syncOrderUpsert(it) }
 
                         return@withContext orderForm.orderId
                     }
@@ -164,7 +175,9 @@ class OrderRepositoryImpl @Inject constructor(
                     null
                 }
 
-                orderDao.insertOrderWithItemsAndPayment(orderEntity, items, advancePaymentLog)
+                val orderId = orderDao.insertOrderWithItemsAndPayment(orderEntity, items, advancePaymentLog)
+                orderDao.getOrderWithDetailsSnapshot(orderId)?.let { syncOrderUpsert(it) }
+                orderId
             } catch (e: Exception) {
                 errorLogger.logException(e, "OrderRepository.saveOrder")
                 -1L
@@ -200,6 +213,7 @@ class OrderRepositoryImpl @Inject constructor(
                         modifiedDateTimeStamp = now
                     )
                 )
+                orderDao.getOrderWithDetailsSnapshot(orderId)?.let { syncOrderUpsert(it) }
             } catch (e: Exception) {
                 errorLogger.logException(e, "OrderRepository.addIntermediatePayment")
             }
@@ -243,6 +257,7 @@ class OrderRepositoryImpl @Inject constructor(
                         null
                     }
                 )
+                orderDao.getOrderWithDetailsSnapshot(orderId)?.let { syncOrderUpsert(it) }
             } catch (e: Exception) {
                 errorLogger.logException(e, "OrderRepository.settleOrder")
             }
@@ -277,6 +292,7 @@ class OrderRepositoryImpl @Inject constructor(
                         null
                     }
                 )
+                orderDao.getOrderWithDetailsSnapshot(orderId)?.let { syncOrderUpsert(it) }
             } catch (e: Exception) {
                 errorLogger.logException(e, "OrderRepository.cancelOrder")
             }
@@ -375,4 +391,39 @@ class OrderRepositoryImpl @Inject constructor(
         createdDateTimeStamp = System.currentTimeMillis(),
         modifiedDateTimeStamp = System.currentTimeMillis()
     )
+
+    private suspend fun syncOrderUpsert(orderWithDetails: OrderWithDetails) {
+        firestoreOrderRepository.createOrUpdateOrder(
+            FirestoreOrder(
+                id = orderWithDetails.order.orderId.toString(),
+                customerId = orderWithDetails.order.customerId?.toString(),
+                customerSnapshot = FirestoreCustomer(
+                    id = orderWithDetails.order.customerId?.toString().orEmpty(),
+                    name = orderWithDetails.order.customerName,
+                    mobileNumber = orderWithDetails.order.customerPhone,
+                    address = orderWithDetails.order.customerAddress,
+                    googleLocationUrl = orderWithDetails.order.googleLocationUrl,
+                    createdBy = orderWithDetails.customer?.createdBy ?: orderWithDetails.order.createdBy
+                ),
+                orderDate = orderWithDetails.order.orderDate,
+                items = orderWithDetails.items.mapIndexed { index, item ->
+                    FirestoreOrderItem(
+                        itemId = item.orderItemId.takeIf { it > 0 }?.toString() ?: "${orderWithDetails.order.orderId}-$index",
+                        itemName = item.itemName,
+                        unitPrice = item.unitPrice,
+                        quantity = item.quantity,
+                        subtotal = item.subtotal
+                    )
+                },
+                upfrontDiscount = orderWithDetails.order.upfrontDiscount,
+                settlementDiscount = orderWithDetails.order.settlementDiscount,
+                advancePaid = orderWithDetails.order.advancePaid,
+                totalCollected = orderWithDetails.order.totalCollected,
+                refundedAmount = orderWithDetails.order.refundedAmount,
+                totalAmount = orderWithDetails.order.totalAmount,
+                status = orderWithDetails.order.status,
+                createdBy = orderWithDetails.order.createdBy
+            )
+        )
+    }
 }

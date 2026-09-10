@@ -44,6 +44,7 @@ enum class DashboardTab(val title: String) {
 enum class DashboardNavigationItem(val title: String) {
     HOME("Home"),
     MASTER_MENU("Master Menu"),
+    CUSTOMERS("Customers"),
     REPORTS("Reports / History")
 }
 
@@ -139,4 +140,3 @@ data class DashboardUiState(
     val isAddModalOpen: Boolean = false,
     val showDatePicker: Boolean = false
 )
-

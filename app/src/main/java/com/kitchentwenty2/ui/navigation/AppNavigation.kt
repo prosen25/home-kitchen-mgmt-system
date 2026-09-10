@@ -22,6 +22,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.kitchentwenty2.domain.model.DashboardNavigationItem
 import com.kitchentwenty2.ui.screens.auth.LoginScreen
 import com.kitchentwenty2.ui.screens.auth.LoginViewModel
+import com.kitchentwenty2.ui.screens.customer.CustomerListScreen
+import com.kitchentwenty2.ui.screens.customer.CustomerListViewModel
 import com.kitchentwenty2.ui.screens.dashboard.DashboardScreen
 import com.kitchentwenty2.ui.screens.dashboard.DashboardViewModel
 import com.kitchentwenty2.ui.screens.expense.ExpenseEntryScreen
@@ -50,6 +52,7 @@ sealed class Screen(val route: String) {
         fun createRoute(orderId: Long) = "order/detail/$orderId"
     }
     data object MenuSetup : Screen("menu/setup")
+    data object Customers : Screen("customers")
     data object ReportsHistory : Screen("reports/history")
     data object AddExpense : Screen("expense/add?defaultDateMillis={defaultDateMillis}") {
         fun createRoute(defaultDateMillis: Long? = null) =
@@ -170,6 +173,7 @@ fun AppNavigation(
                     when (destination) {
                         DashboardNavigationItem.HOME -> { /* Already on dashboard */ }
                         DashboardNavigationItem.MASTER_MENU -> navController.navigate(Screen.MenuSetup.route)
+                        DashboardNavigationItem.CUSTOMERS -> navController.navigate(Screen.Customers.route)
                         DashboardNavigationItem.REPORTS -> navController.navigate(Screen.ReportsHistory.route)
                     }
                 },
@@ -201,12 +205,12 @@ fun AppNavigation(
             val viewModel: OrderCreateEditViewModel = hiltViewModel()
             val formState by viewModel.formState.collectAsState()
             val menuItems by viewModel.menuItems.collectAsState()
-            val customerSuggestions by viewModel.customerSuggestions.collectAsState()
+            val customerProfiles by viewModel.customerProfiles.collectAsState()
 
             OrderCreateEditScreen(
                 formState = formState,
                 menuList = menuItems,
-                customerProfiles = customerSuggestions,
+                customerProfiles = customerProfiles,
                 onFormStateChanged = viewModel::updateFormState,
                 onBackClick = { navController.popBackStack() },
                 onSaveOrder = { viewModel.saveOrder { navController.popBackStack() } },
@@ -224,12 +228,12 @@ fun AppNavigation(
             val viewModel: OrderCreateEditViewModel = hiltViewModel()
             val formState by viewModel.formState.collectAsState()
             val menuItems by viewModel.menuItems.collectAsState()
-            val customerSuggestions by viewModel.customerSuggestions.collectAsState()
+            val customerProfiles by viewModel.customerProfiles.collectAsState()
 
             OrderCreateEditScreen(
                 formState = formState,
                 menuList = menuItems,
-                customerProfiles = customerSuggestions,
+                customerProfiles = customerProfiles,
                 onFormStateChanged = viewModel::updateFormState,
                 onBackClick = { navController.popBackStack() },
                 onSaveOrder = { viewModel.saveOrder { navController.popBackStack() } },
@@ -292,7 +296,22 @@ fun AppNavigation(
             )
         }
 
-        // Screen 5: Reports / Order History
+        // Screen 5: Customer Master
+        composable(Screen.Customers.route) {
+            val viewModel: CustomerListViewModel = hiltViewModel()
+            val customers by viewModel.customers.collectAsState()
+
+            CustomerListScreen(
+                customers = customers,
+                onSearchQueryChanged = viewModel::onSearchQueryChanged,
+                onAddCustomer = viewModel::addCustomer,
+                onUpdateCustomer = viewModel::updateCustomer,
+                onDeleteCustomer = viewModel::deleteCustomer,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        // Screen 6: Reports / Order History
         composable(Screen.ReportsHistory.route) {
             val viewModel: ReportsHistoryViewModel = hiltViewModel()
             val uiState by viewModel.uiState.collectAsState()
@@ -309,7 +328,7 @@ fun AppNavigation(
             )
         }
 
-        // Screen 6: Expense Entry Screen / Modal
+        // Screen 7: Expense Entry Screen / Modal
         composable(
             route = Screen.AddExpense.route,
             arguments = listOf(
@@ -340,7 +359,7 @@ fun AppNavigation(
             )
         }
 
-        // Screen 7: Edit Expense
+        // Screen 8: Edit Expense
         composable(
             route = Screen.EditExpense.route,
             arguments = listOf(navArgument("expenseId") { type = NavType.LongType })

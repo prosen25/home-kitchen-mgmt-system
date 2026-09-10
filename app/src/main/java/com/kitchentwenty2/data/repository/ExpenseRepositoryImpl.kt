@@ -2,6 +2,8 @@ package com.kitchentwenty2.data.repository
 
 import com.kitchentwenty2.data.local.dao.ExpenseDao
 import com.kitchentwenty2.data.local.entity.ExpenseEntity
+import com.kitchentwenty2.data.remote.firestore.FirestoreExpense
+import com.kitchentwenty2.data.remote.firestore.FirestoreExpenseRepository
 import com.kitchentwenty2.domain.model.ExpenseSummaryItem
 import com.kitchentwenty2.domain.repository.ExpenseRepository
 import com.kitchentwenty2.util.AppErrorLogger
@@ -20,6 +22,7 @@ import javax.inject.Singleton
 @Singleton
 class ExpenseRepositoryImpl @Inject constructor(
     private val expenseDao: ExpenseDao,
+    private val firestoreExpenseRepository: FirestoreExpenseRepository,
     private val errorLogger: AppErrorLogger
 ) : ExpenseRepository {
 
@@ -54,7 +57,9 @@ class ExpenseRepositoryImpl @Inject constructor(
                     createdDateTimeStamp = System.currentTimeMillis(),
                     modifiedDateTimeStamp = System.currentTimeMillis()
                 )
-                expenseDao.insertExpense(entity)
+                val expenseId = expenseDao.insertExpense(entity)
+                syncExpenseUpsert(entity.copy(expenseId = expenseId))
+                expenseId
             } catch (e: Exception) {
                 errorLogger.logException(e, "ExpenseRepository.addExpense")
                 -1L
@@ -66,6 +71,7 @@ class ExpenseRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 expenseDao.deleteExpenseById(expenseId)
+                firestoreExpenseRepository.deleteExpense(expenseId.toString())
             } catch (e: Exception) {
                 errorLogger.logException(e, "ExpenseRepository.deleteExpense")
             }
@@ -100,12 +106,28 @@ class ExpenseRepositoryImpl @Inject constructor(
                     modifiedDateTimeStamp = System.currentTimeMillis()
                 )
                 val res = expenseDao.insertExpense(updated)
+                if (res > 0) {
+                    syncExpenseUpsert(updated)
+                }
                 res > 0
             } catch (e: Exception) {
                 errorLogger.logException(e, "ExpenseRepository.updateExpense")
                 false
             }
         }
+    }
+
+    private suspend fun syncExpenseUpsert(expense: ExpenseEntity) {
+        firestoreExpenseRepository.createOrUpdateExpense(
+            FirestoreExpense(
+                id = expense.expenseId.toString(),
+                expenseDate = expense.expenseDate,
+                category = expense.category,
+                amount = expense.amount,
+                notes = expense.notes,
+                createdBy = expense.createdBy
+            )
+        )
     }
 
     private fun ExpenseEntity.toDomain(): ExpenseSummaryItem {

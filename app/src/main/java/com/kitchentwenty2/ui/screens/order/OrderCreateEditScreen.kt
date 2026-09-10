@@ -119,12 +119,60 @@ fun OrderCreateEditScreen(
         datePickerState.selectedDateMillis = DateTimeUtils.parseDate(formState.orderDate)
     }
 
+    fun normalizeMobile(value: String): String = value.filter(Char::isDigit)
+
+    var customerNameField by remember { mutableStateOf(TextFieldValue(formState.customerName)) }
+    var mobileNumberField by remember { mutableStateOf(TextFieldValue(formState.mobileNumber)) }
+
+    LaunchedEffect(formState.customerName) {
+        if (customerNameField.text != formState.customerName) {
+            customerNameField = TextFieldValue(
+                text = formState.customerName,
+                selection = TextRange(formState.customerName.length)
+            )
+        }
+    }
+
+    LaunchedEffect(formState.mobileNumber) {
+        if (mobileNumberField.text != formState.mobileNumber) {
+            mobileNumberField = TextFieldValue(
+                text = formState.mobileNumber,
+                selection = TextRange(formState.mobileNumber.length)
+            )
+        }
+    }
+
     // Autocomplete dropdown state
     var isAutoCompleteExpanded by remember { mutableStateOf(false) }
-    val matchingCustomers = remember(formState.customerName, customerProfiles) {
-        if (formState.customerName.isNotBlank()) {
-            customerProfiles.filter { it.name.contains(formState.customerName, ignoreCase = true) }
-        } else emptyList()
+    var activeCustomerField by remember { mutableStateOf("name") }
+    val matchingCustomers = remember(
+        customerNameField.text,
+        mobileNumberField.text,
+        customerProfiles,
+        activeCustomerField
+    ) {
+        when (activeCustomerField) {
+            "mobile" -> {
+                val mobileQuery = normalizeMobile(mobileNumberField.text)
+                if (mobileQuery.isBlank()) {
+                    emptyList()
+                } else {
+                    customerProfiles.filter { profile ->
+                        normalizeMobile(profile.mobileNumber).contains(mobileQuery)
+                    }.take(8)
+                }
+            }
+            else -> {
+                val nameQuery = customerNameField.text.trim()
+                if (nameQuery.isBlank()) {
+                    emptyList()
+                } else {
+                    customerProfiles.filter { profile ->
+                        profile.name.contains(nameQuery, ignoreCase = true)
+                    }.take(8)
+                }
+            }
+        }
     }
 
 
@@ -265,13 +313,34 @@ fun OrderCreateEditScreen(
             // -------------------------------------------------------------
             item {
                 SectionCard(title = "2. Customer & Delivery Location") {
+                    fun applyCustomerProfile(profile: CustomerProfile) {
+                        customerNameField = TextFieldValue(
+                            text = profile.name,
+                            selection = TextRange(profile.name.length)
+                        )
+                        mobileNumberField = TextFieldValue(
+                            text = profile.mobileNumber,
+                            selection = TextRange(profile.mobileNumber.length)
+                        )
+                        onFormStateChanged(
+                            formState.copy(
+                                customerName = profile.name,
+                                mobileNumber = profile.mobileNumber,
+                                address = profile.address,
+                                googleLocationUrl = profile.googleLocationUrl ?: ""
+                            )
+                        )
+                    }
+
                     // Customer Name with Autocomplete
                     Box(modifier = Modifier.fillMaxWidth()) {
                         OutlinedTextField(
-                            value = formState.customerName,
+                            value = customerNameField,
                             onValueChange = {
-                                onFormStateChanged(formState.copy(customerName = it))
-                                isAutoCompleteExpanded = it.isNotBlank() && matchingCustomers.isNotEmpty()
+                                customerNameField = it
+                                onFormStateChanged(formState.copy(customerName = it.text))
+                                activeCustomerField = "name"
+                                isAutoCompleteExpanded = it.text.isNotBlank()
                             },
                             label = { Text("Customer Name *") },
                             placeholder = { Text("e.g. Jane Doe (Type to auto-suggest)") },
@@ -286,7 +355,7 @@ fun OrderCreateEditScreen(
 
                         // Autocomplete Dropdown
                         DropdownMenu(
-                            expanded = isAutoCompleteExpanded && matchingCustomers.isNotEmpty(),
+                            expanded = activeCustomerField == "name" && isAutoCompleteExpanded && matchingCustomers.isNotEmpty(),
                             onDismissRequest = { isAutoCompleteExpanded = false },
                             modifier = Modifier.fillMaxWidth(0.9f),
                             properties = PopupProperties(focusable = false)
@@ -304,14 +373,7 @@ fun OrderCreateEditScreen(
                                         }
                                     },
                                     onClick = {
-                                        onFormStateChanged(
-                                            formState.copy(
-                                                customerName = profile.name,
-                                                mobileNumber = profile.mobileNumber,
-                                                address = profile.address,
-                                                googleLocationUrl = profile.googleLocationUrl ?: ""
-                                            )
-                                        )
+                                        applyCustomerProfile(profile)
                                         isAutoCompleteExpanded = false
                                     }
                                 )
@@ -326,16 +388,49 @@ fun OrderCreateEditScreen(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        OutlinedTextField(
-                            value = formState.mobileNumber,
-                            onValueChange = { onFormStateChanged(formState.copy(mobileNumber = it)) },
-                            label = { Text("Mobile Number") },
-                            placeholder = { Text("+91 98765 43210") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp)
-                        )
+                        Box(modifier = Modifier.weight(1f)) {
+                            OutlinedTextField(
+                                value = mobileNumberField,
+                                onValueChange = {
+                                    mobileNumberField = it
+                                    onFormStateChanged(formState.copy(mobileNumber = it.text))
+                                    activeCustomerField = "mobile"
+                                    isAutoCompleteExpanded = it.text.isNotBlank()
+                                },
+                                label = { Text("Mobile Number") },
+                                placeholder = { Text("+91 98765 43210") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+
+                            DropdownMenu(
+                                expanded = activeCustomerField == "mobile" && isAutoCompleteExpanded && matchingCustomers.isNotEmpty(),
+                                onDismissRequest = { isAutoCompleteExpanded = false },
+                                modifier = Modifier.fillMaxWidth(0.95f),
+                                properties = PopupProperties(focusable = false)
+                            ) {
+                                matchingCustomers.forEach { profile ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Column {
+                                                Text(profile.name, fontWeight = FontWeight.Bold)
+                                                Text(
+                                                    "${profile.mobileNumber} • ${profile.address.take(30)}...",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            applyCustomerProfile(profile)
+                                            isAutoCompleteExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
 
                         Spacer(modifier = Modifier.width(8.dp))
 
