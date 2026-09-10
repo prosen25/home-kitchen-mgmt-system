@@ -48,6 +48,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -289,7 +290,8 @@ fun OrderCreateEditScreen(
                         DropdownMenu(
                             expanded = isAutoCompleteExpanded,
                             onDismissRequest = { isAutoCompleteExpanded = false },
-                            modifier = Modifier.fillMaxWidth(0.9f)
+                            modifier = Modifier.fillMaxWidth(0.9f),
+                            properties = PopupProperties(focusable = false)
                         ) {
                             matchingCustomers.forEach { profile ->
                                 DropdownMenuItem(
@@ -447,7 +449,8 @@ fun OrderCreateEditScreen(
                         DropdownMenu(
                             expanded = suggestionsExpanded,
                             onDismissRequest = { suggestionsExpanded = false },
-                            modifier = Modifier.fillMaxWidth(0.95f)
+                            modifier = Modifier.fillMaxWidth(0.95f),
+                            properties = PopupProperties(focusable = false)
                         ) {
                             suggestionResults.forEach { menuItem ->
                                 DropdownMenuItem(text = {
