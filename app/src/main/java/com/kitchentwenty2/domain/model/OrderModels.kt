@@ -60,6 +60,7 @@ data class OrderDetailUiState(
         OrderItemForm(3, "Gulab Jamun (4 pcs)", 90.0, 1)
     ),
     val upfrontDiscount: Double = 50.0,
+    val advancePaid: Double = 150.0,
     val totalAmount: Double = 600.0, // (250*2 + 60 + 90) - 50 = 600
     val totalCollected: Double = 250.0,
     val currentRemainingDue: Double = 350.0,

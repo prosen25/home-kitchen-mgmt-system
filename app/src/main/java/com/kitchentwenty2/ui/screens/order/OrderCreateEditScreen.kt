@@ -48,6 +48,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -72,6 +73,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -124,10 +127,6 @@ fun OrderCreateEditScreen(
         } else emptyList()
     }
 
-    // Dialog state for custom item
-    var showCustomItemDialog by remember { mutableStateOf(false) }
-    var customItemName by remember { mutableStateOf("") }
-    var customItemPrice by remember { mutableStateOf("") }
 
     val subtotal = formState.subtotal
     val netTotal = formState.netTotal
@@ -287,9 +286,10 @@ fun OrderCreateEditScreen(
 
                         // Autocomplete Dropdown
                         DropdownMenu(
-                            expanded = isAutoCompleteExpanded,
+                            expanded = isAutoCompleteExpanded && matchingCustomers.isNotEmpty(),
                             onDismissRequest = { isAutoCompleteExpanded = false },
-                            modifier = Modifier.fillMaxWidth(0.9f)
+                            modifier = Modifier.fillMaxWidth(0.9f),
+                            properties = PopupProperties(focusable = false)
                         ) {
                             matchingCustomers.forEach { profile ->
                                 DropdownMenuItem(
@@ -422,45 +422,52 @@ fun OrderCreateEditScreen(
                     Spacer(modifier = Modifier.height(6.dp))
 
                     // Unified Add Item: Name + Price + Suggestions + Add button
-                    var localName by remember { mutableStateOf("") }
+                    var localNameField by remember { mutableStateOf(TextFieldValue("")) }
                     var localPrice by remember { mutableStateOf("") }
                     var suggestionsExpanded by remember { mutableStateOf(false) }
+                    val localName = localNameField.text
                     val suggestionResults = remember(localName, menuList) {
                         if (localName.isBlank()) emptyList() else menuList.filter { it.name.contains(localName, ignoreCase = true) }.take(50)
                     }
 
-                    OutlinedTextField(
-                        value = localName,
-                        onValueChange = {
-                            localName = it
-                            suggestionsExpanded = it.isNotBlank() && suggestionResults.isNotEmpty()
-                        },
-                        label = { Text("Item / Dish Name *") },
-                        placeholder = { Text("Type or select from menu") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
-                    )
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = localNameField,
+                            onValueChange = {
+                                localNameField = it
+                                suggestionsExpanded = it.text.isNotBlank()
+                            },
+                            label = { Text("Item / Dish Name *") },
+                            placeholder = { Text("Type or select from menu") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
+                        )
 
-                    DropdownMenu(
-                        expanded = suggestionsExpanded,
-                        onDismissRequest = { suggestionsExpanded = false },
-                        modifier = Modifier.fillMaxWidth(0.95f)
-                    ) {
-                        suggestionResults.forEach { menuItem ->
-                            DropdownMenuItem(text = {
-                                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                                    Column {
-                                        Text(menuItem.name, fontWeight = FontWeight.Bold)
-                                        Text(formatCurrency(menuItem.defaultPrice), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        DropdownMenu(
+                            expanded = suggestionsExpanded && suggestionResults.isNotEmpty(),
+                            onDismissRequest = { suggestionsExpanded = false },
+                            modifier = Modifier.fillMaxWidth(0.95f),
+                            properties = PopupProperties(focusable = false)
+                        ) {
+                            suggestionResults.forEach { menuItem ->
+                                DropdownMenuItem(text = {
+                                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                        Column {
+                                            Text(menuItem.name, fontWeight = FontWeight.Bold)
+                                            Text(formatCurrency(menuItem.defaultPrice), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
                                     }
-                                }
-                            }, onClick = {
-                                localName = menuItem.name
-                                localPrice = if (menuItem.defaultPrice == 0.0) "" else menuItem.defaultPrice.toString()
-                                suggestionsExpanded = false
-                            })
+                                }, onClick = {
+                                    localNameField = TextFieldValue(
+                                        text = menuItem.name,
+                                        selection = TextRange(menuItem.name.length)
+                                    )
+                                    localPrice = if (menuItem.defaultPrice == 0.0) "" else menuItem.defaultPrice.toString()
+                                    suggestionsExpanded = false
+                                })
+                            }
                         }
                     }
 
@@ -491,7 +498,7 @@ fun OrderCreateEditScreen(
                                 menuItemId = menuId,
                                 isCustom = menuId == null
                             )))
-                            localName = ""
+                            localNameField = TextFieldValue("")
                             localPrice = ""
                         }
                     }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp), colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)) {
@@ -619,16 +626,6 @@ fun OrderCreateEditScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // Button: [ + Add Custom / Typed Item ]
-                    OutlinedButton(
-                        onClick = { showCustomItemDialog = true },
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Add Custom / Typed Item")
-                    }
                 }
             }
 
@@ -773,4 +770,3 @@ fun OrderCreateEditScreenPreview() {
 
 private fun Double.toInputString(): String =
     if (this == 0.0) "" else toString()
-

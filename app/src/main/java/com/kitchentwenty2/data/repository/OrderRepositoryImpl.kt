@@ -355,6 +355,7 @@ class OrderRepositoryImpl @Inject constructor(
             googleLocationUrl = order.googleLocationUrl ?: "",
             items = items.map { OrderItemForm(it.orderItemId, it.itemName, it.unitPrice, it.quantity, it.menuItemId, it.isCustom) },
             upfrontDiscount = order.upfrontDiscount,
+            advancePaid = order.advancePaid,
             totalAmount = order.totalAmount,
             totalCollected = order.totalCollected,
             currentRemainingDue = due,
