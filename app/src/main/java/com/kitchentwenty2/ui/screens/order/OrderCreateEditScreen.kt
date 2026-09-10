@@ -125,10 +125,6 @@ fun OrderCreateEditScreen(
         } else emptyList()
     }
 
-    // Dialog state for custom item
-    var showCustomItemDialog by remember { mutableStateOf(false) }
-    var customItemName by remember { mutableStateOf("") }
-    var customItemPrice by remember { mutableStateOf("") }
 
     val subtotal = formState.subtotal
     val netTotal = formState.netTotal
@@ -624,16 +620,6 @@ fun OrderCreateEditScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // Button: [ + Add Custom / Typed Item ]
-                    OutlinedButton(
-                        onClick = { showCustomItemDialog = true },
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Add Custom / Typed Item")
-                    }
                 }
             }
 
