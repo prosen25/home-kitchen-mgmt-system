@@ -100,6 +100,10 @@ class OrderRepositoryImpl @Inject constructor(
                 if (orderForm.isEditMode) {
                     val existingOrder = orderDao.getOrderById(orderForm.orderId)
                     if (existingOrder != null) {
+                        // Calculate the difference between the new advance amount and previous advance amount
+                        val advanceDelta = advance - existingOrder.advancePaid
+                        val newTotalCollected = (existingOrder.totalCollected + advanceDelta).coerceAtLeast(0.0)
+                        
                         val updated = existingOrder.copy(
                             customerId = customerId.takeIf { it > 0 } ?: existingOrder.customerId,
                             customerName = orderForm.customerName.trim(),
@@ -110,18 +114,32 @@ class OrderRepositoryImpl @Inject constructor(
                             upfrontDiscount = orderForm.upfrontDiscount,
                             totalAmount = netTotal,
                             settlementDiscount = existingOrder.settlementDiscount,
-                            advancePaid = existingOrder.advancePaid,
-                            totalCollected = existingOrder.totalCollected,
+                            advancePaid = advance,
+                            totalCollected = newTotalCollected,
                             refundedAmount = existingOrder.refundedAmount,
                             status = deriveOrderStatusForEdit(
                                 existingStatus = existingOrder.status,
-                                totalCollected = existingOrder.totalCollected,
+                                totalCollected = newTotalCollected,
                                 netTotal = netTotal
                             ),
                             modifiedDateTimeStamp = now
                         )
                         val items = orderForm.items.map { it.toEntity(orderForm.orderId) }
                         orderDao.updateOrderWithItems(updated, items)
+
+                        // Update or insert the corresponding ADVANCE payment log entry
+                        if (advance > 0) {
+                            val advancePaymentLog = PaymentLogEntity(
+                                orderId = orderForm.orderId,
+                                paymentDate = resolvePaymentTimestampForOrder(orderTimestamp, now),
+                                amount = advanceDelta,
+                                paymentType = "ADVANCE",
+                                createdDateTimeStamp = now,
+                                modifiedDateTimeStamp = now
+                            )
+                            // Ensure payment log record is inserted/updated in local DB
+                            orderDao.insertPaymentLog(advancePaymentLog)
+                        }
 
                         // If order date is today or in the past, adjust ADVANCE and SETTLEMENT payment dates to the order date
                         val orderStart = DateTimeUtils.getStartOfDay(orderTimestamp)

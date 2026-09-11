@@ -82,10 +82,10 @@ interface OrderDao {
 
     @Query("""
         SELECT 
-            COALESCE(SUM(CASE WHEN paymentType = 'REFUND' THEN 0.0 ELSE amount END), 0.0) as totalCollected,
-            COALESCE(SUM(CASE WHEN paymentType = 'REFUND' THEN amount ELSE 0.0 END), 0.0) as totalRefunded
-        FROM payment_logs
-        WHERE paymentDate >= :startOfDay AND paymentDate <= :endOfDay
+            COALESCE(SUM(totalCollected), 0.0) as totalCollected,
+            COALESCE(SUM(refundedAmount), 0.0) as totalRefunded
+        FROM orders
+        WHERE orderDate >= :startOfDay AND orderDate <= :endOfDay
     """)
     fun getDailyRevenueTotals(startOfDay: Long, endOfDay: Long): Flow<DailyRevenueCalculation>
 
