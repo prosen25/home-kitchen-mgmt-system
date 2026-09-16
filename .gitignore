@@ -34,3 +34,4 @@ captures/
 keystore.properties
 keystore.properties.backup
 keystore.properties.prod
+keystore.properties.debug
