@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -257,6 +259,7 @@ fun OrderCreateEditScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .imePadding()
                 .background(MaterialTheme.colorScheme.background),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -357,7 +360,9 @@ fun OrderCreateEditScreen(
                         DropdownMenu(
                             expanded = activeCustomerField == "name" && isAutoCompleteExpanded && matchingCustomers.isNotEmpty(),
                             onDismissRequest = { isAutoCompleteExpanded = false },
-                            modifier = Modifier.fillMaxWidth(0.9f),
+                            modifier = Modifier
+                                .fillMaxWidth(0.9f)
+                                .heightIn(max = 200.dp),
                             properties = PopupProperties(focusable = false)
                         ) {
                             matchingCustomers.forEach { profile ->
@@ -408,7 +413,9 @@ fun OrderCreateEditScreen(
                             DropdownMenu(
                                 expanded = activeCustomerField == "mobile" && isAutoCompleteExpanded && matchingCustomers.isNotEmpty(),
                                 onDismissRequest = { isAutoCompleteExpanded = false },
-                                modifier = Modifier.fillMaxWidth(0.95f),
+                                modifier = Modifier
+                                    .fillMaxWidth(0.95f)
+                                    .heightIn(max = 200.dp),
                                 properties = PopupProperties(focusable = false)
                             ) {
                                 matchingCustomers.forEach { profile ->
@@ -543,7 +550,9 @@ fun OrderCreateEditScreen(
                         DropdownMenu(
                             expanded = suggestionsExpanded && suggestionResults.isNotEmpty(),
                             onDismissRequest = { suggestionsExpanded = false },
-                            modifier = Modifier.fillMaxWidth(0.95f),
+                            modifier = Modifier
+                                .fillMaxWidth(0.95f)
+                                .heightIn(max = 200.dp),
                             properties = PopupProperties(focusable = false)
                         ) {
                             suggestionResults.forEach { menuItem ->
