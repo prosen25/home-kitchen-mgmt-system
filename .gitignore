@@ -29,3 +29,8 @@ captures/
 
 # Environment variable files
 .env
+
+# Keystore properties
+keystore.properties
+keystore.properties.backup
+keystore.properties.prod

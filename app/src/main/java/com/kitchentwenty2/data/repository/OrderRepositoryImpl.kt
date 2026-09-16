@@ -1,6 +1,5 @@
 package com.kitchentwenty2.data.repository
 
-import com.kitchentwenty2.data.local.dao.ExpenseDao
 import com.kitchentwenty2.data.local.dao.OrderDao
 import com.kitchentwenty2.data.local.entity.OrderEntity
 import com.kitchentwenty2.data.local.entity.OrderItemEntity
@@ -10,6 +9,7 @@ import com.kitchentwenty2.data.remote.firestore.FirestoreCustomer
 import com.kitchentwenty2.data.remote.firestore.FirestoreOrder
 import com.kitchentwenty2.data.remote.firestore.FirestoreOrderItem
 import com.kitchentwenty2.data.remote.firestore.FirestoreOrderRepository
+import com.kitchentwenty2.data.remote.firestore.FirestorePaymentLog
 import com.kitchentwenty2.domain.model.FinancialSummary
 import com.kitchentwenty2.domain.model.OrderDetailUiState
 import com.kitchentwenty2.domain.model.OrderFormState
@@ -18,14 +18,19 @@ import com.kitchentwenty2.domain.model.OrderStatus
 import com.kitchentwenty2.domain.model.OrderSummaryItem
 import com.kitchentwenty2.domain.model.PaymentRecord
 import com.kitchentwenty2.domain.repository.CustomerRepository
+import com.kitchentwenty2.domain.repository.ExpenseRepository
 import com.kitchentwenty2.domain.repository.OrderRepository
 import com.kitchentwenty2.util.AppErrorLogger
 import com.kitchentwenty2.util.DateTimeUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -52,7 +57,7 @@ internal fun resolvePaymentTimestampForOrder(orderDateMillis: Long, fallbackTime
 @Singleton
 class OrderRepositoryImpl @Inject constructor(
     private val orderDao: OrderDao,
-    private val expenseDao: ExpenseDao,
+    private val expenseRepository: ExpenseRepository,
     private val customerRepository: CustomerRepository,
     private val firestoreOrderRepository: FirestoreOrderRepository,
     private val errorLogger: AppErrorLogger
@@ -61,13 +66,19 @@ class OrderRepositoryImpl @Inject constructor(
     override fun getOrdersForDate(dateMillis: Long): Flow<List<OrderSummaryItem>> {
         val startOfDay = DateTimeUtils.getStartOfDay(dateMillis)
         val endOfDay = DateTimeUtils.getEndOfDay(dateMillis)
-        return orderDao.getOrdersByDate(startOfDay, endOfDay)
+        return withRemoteOrders(
+            remote = firestoreOrderRepository.listenOrdersForDate(startOfDay, endOfDay),
+            local = orderDao.getOrdersByDate(startOfDay, endOfDay)
+        )
             .map { list -> list.map { it.toSummaryItem() } }
             .flowOn(Dispatchers.IO)
     }
 
     override fun getOrderDetails(orderId: Long): Flow<OrderDetailUiState?> {
-        return orderDao.getOrderWithDetailsById(orderId)
+        return withRemoteOrders(
+            remote = firestoreOrderRepository.listenOrder(orderId.toString()).map { listOfNotNull(it) },
+            local = orderDao.getOrderWithDetailsById(orderId)
+        )
             .map { it?.toDetailUiState() }
             .flowOn(Dispatchers.IO)
     }
@@ -323,7 +334,7 @@ class OrderRepositoryImpl @Inject constructor(
 
         return combine(
             orderDao.getDailyRevenueTotals(startOfDay, endOfDay),
-            expenseDao.getTotalExpensesByDate(startOfDay, endOfDay)
+            expenseRepository.getTotalExpensesForDate(dateMillis)
         ) { revenueCalc, totalExpenses ->
             val netRevenue = calculateNetRevenue(revenueCalc)
             val netProfit = netRevenue - totalExpenses
@@ -427,10 +438,22 @@ class OrderRepositoryImpl @Inject constructor(
                 items = orderWithDetails.items.mapIndexed { index, item ->
                     FirestoreOrderItem(
                         itemId = item.orderItemId.takeIf { it > 0 }?.toString() ?: "${orderWithDetails.order.orderId}-$index",
+                        menuItemId = item.menuItemId?.toString(),
                         itemName = item.itemName,
                         unitPrice = item.unitPrice,
                         quantity = item.quantity,
-                        subtotal = item.subtotal
+                        subtotal = item.subtotal,
+                        isCustom = item.isCustom
+                    )
+                },
+                paymentLogs = orderWithDetails.paymentLogs.map { payment ->
+                    FirestorePaymentLog(
+                        id = payment.paymentId.toString(),
+                        orderId = orderWithDetails.order.orderId.toString(),
+                        paymentDate = payment.paymentDate,
+                        amount = payment.amount,
+                        paymentType = payment.paymentType,
+                        createdBy = payment.createdBy
                     )
                 },
                 upfrontDiscount = orderWithDetails.order.upfrontDiscount,
@@ -442,6 +465,71 @@ class OrderRepositoryImpl @Inject constructor(
                 status = orderWithDetails.order.status,
                 createdBy = orderWithDetails.order.createdBy
             )
+        )
+    }
+
+    private fun <T> withRemoteOrders(
+        remote: Flow<List<FirestoreOrder>>,
+        local: Flow<T>
+    ): Flow<T> = channelFlow {
+        launch {
+            remote.catch { errorLogger.logException(it, "OrderRepository.listenOrders") }
+                .collect { orders -> orders.forEach { persistRemoteOrder(it) } }
+        }
+        local.collect { send(it) }
+    }
+
+    private suspend fun persistRemoteOrder(remote: FirestoreOrder) {
+        val orderId = remote.id.toLongOrNull()?.takeIf { it > 0 } ?: return
+        val now = System.currentTimeMillis()
+        val customer = remote.customerSnapshot
+        orderDao.upsertSyncedOrder(
+            order = OrderEntity(
+                orderId = orderId,
+                customerId = null,
+                customerName = customer?.name ?: remote.customerId.orEmpty(),
+                customerPhone = customer?.mobileNumber,
+                customerAddress = customer?.address,
+                googleLocationUrl = customer?.googleLocationUrl,
+                orderDate = remote.orderDate,
+                upfrontDiscount = remote.upfrontDiscount,
+                settlementDiscount = remote.settlementDiscount,
+                advancePaid = remote.advancePaid,
+                totalCollected = remote.totalCollected,
+                refundedAmount = remote.refundedAmount,
+                totalAmount = remote.totalAmount,
+                status = remote.status,
+                createdBy = remote.createdBy ?: "SYSTEM",
+                createdDateTimeStamp = remote.createdAt?.toDate()?.time ?: now,
+                modifiedDateTimeStamp = remote.modifiedAt?.toDate()?.time ?: now
+            ),
+            items = remote.items.map { item ->
+                OrderItemEntity(
+                    orderItemId = item.itemId.toLongOrNull() ?: 0L,
+                    orderId = orderId,
+                    itemName = item.itemName,
+                    unitPrice = item.unitPrice,
+                    quantity = item.quantity,
+                    subtotal = item.subtotal.takeIf { it > 0.0 } ?: item.unitPrice * item.quantity,
+                    menuItemId = item.menuItemId?.toLongOrNull(),
+                    isCustom = item.isCustom,
+                    createdBy = remote.createdBy ?: "SYSTEM",
+                    createdDateTimeStamp = remote.createdAt?.toDate()?.time ?: now,
+                    modifiedDateTimeStamp = remote.modifiedAt?.toDate()?.time ?: now
+                )
+            },
+            paymentLogs = remote.paymentLogs.map { payment ->
+                PaymentLogEntity(
+                    paymentId = payment.id.toLongOrNull() ?: 0L,
+                    orderId = orderId,
+                    paymentDate = payment.paymentDate,
+                    amount = payment.amount,
+                    paymentType = payment.paymentType,
+                    createdBy = payment.createdBy ?: remote.createdBy ?: "SYSTEM",
+                    createdDateTimeStamp = payment.createdAt?.toDate()?.time ?: now,
+                    modifiedDateTimeStamp = now
+                )
+            }
         )
     }
 }
