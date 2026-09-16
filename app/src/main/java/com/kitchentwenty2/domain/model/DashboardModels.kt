@@ -11,6 +11,7 @@ data class FinancialSummary(
     val netRevenue: Double,
     val totalExpenses: Double,
     val netProfit: Double,
+    val totalOrderValue: Double = 0.0,
     val isProjected: Boolean = false // If viewing future date, shows "Expected Revenue"
 )
 
@@ -57,6 +58,7 @@ data class DashboardUiState(
         netRevenue = 4250.0,
         totalExpenses = 1480.0,
         netProfit = 2770.0,
+        totalOrderValue = 5800.0,
         isProjected = false
     ),
     val selectedTab: DashboardTab = DashboardTab.ORDERS,

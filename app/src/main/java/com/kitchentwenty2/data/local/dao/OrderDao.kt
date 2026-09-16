@@ -14,7 +14,8 @@ import kotlinx.coroutines.flow.Flow
 
 data class DailyRevenueCalculation(
     val totalCollected: Double,
-    val totalRefunded: Double
+    val totalRefunded: Double,
+    val totalOrderValue: Double = 0.0
 )
 
 @Dao
@@ -106,7 +107,8 @@ interface OrderDao {
     @Query("""
         SELECT 
             COALESCE(SUM(totalCollected), 0.0) as totalCollected,
-            COALESCE(SUM(refundedAmount), 0.0) as totalRefunded
+            COALESCE(SUM(refundedAmount), 0.0) as totalRefunded,
+            COALESCE(SUM(CASE WHEN status != 'CANCELLED' THEN totalAmount ELSE 0.0 END), 0.0) as totalOrderValue
         FROM orders
         WHERE orderDate >= :startOfDay AND orderDate <= :endOfDay
     """)

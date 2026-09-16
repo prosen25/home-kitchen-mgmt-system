@@ -25,6 +25,9 @@ import com.kitchentwenty2.domain.model.FinancialSummary
 import com.kitchentwenty2.ui.theme.ExpenseRed
 import com.kitchentwenty2.ui.theme.ExpenseRedContainer
 import com.kitchentwenty2.ui.theme.ExpenseRedOnContainer
+import com.kitchentwenty2.ui.theme.OrderValueBlue
+import com.kitchentwenty2.ui.theme.OrderValueBlueContainer
+import com.kitchentwenty2.ui.theme.OrderValueBlueOnContainer
 import com.kitchentwenty2.ui.theme.LossRed
 import com.kitchentwenty2.ui.theme.LossRedContainer
 import com.kitchentwenty2.ui.theme.LossRedOnContainer
@@ -49,7 +52,21 @@ fun FinancialSummaryCards(
             .height(IntrinsicSize.Min),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Box 1 (Green): Net Revenue (or "Expected Revenue" if future)
+        // Gross value of valid orders, before collection and expense calculations.
+        SummaryBox(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight(),
+            title = "Total Order Value",
+            subtitle = "Gross Bookings",
+            amount = formatCurrency(summary.totalOrderValue),
+            containerColor = OrderValueBlueContainer,
+            contentColor = OrderValueBlueOnContainer,
+            accentColor = OrderValueBlue,
+            borderColor = OrderValueBlue.copy(alpha = 0.25f)
+        )
+
+        // Net Revenue (or "Expected Revenue" if future)
         SummaryBox(
             modifier = Modifier
                 .weight(1f)
@@ -84,7 +101,7 @@ fun FinancialSummaryCards(
 
         SummaryBox(
             modifier = Modifier
-                .weight(1.05f)
+                .weight(1f)
                 .fillMaxHeight(),
             title = if (isProfit) "Net Profit" else "Net Loss",
             subtitle = "Revenue - Expenses",
@@ -122,25 +139,25 @@ private fun SummaryBox(
     ) {
         Column(
             modifier = Modifier
-                .padding(horizontal = 10.dp, vertical = 10.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = accentColor,
-                maxLines = 1
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                color = contentColor.copy(alpha = 0.7f),
-                maxLines = 1
-            )
+                .padding(horizontal = 5.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = title,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                    fontWeight = FontWeight.Bold,
+                    color = accentColor,
+                maxLines = 2
+                )
+                Text(
+                    text = subtitle,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
+                    color = contentColor.copy(alpha = 0.7f),
+                    maxLines = 1
+                )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = amount,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = if (isHighlighted) FontWeight.ExtraBold else FontWeight.Bold,
                 color = contentColor,
                 maxLines = 1
@@ -152,4 +169,3 @@ private fun SummaryBox(
 fun formatCurrency(value: Double): String {
     return String.format(Locale.getDefault(), "₹%,.0f", value)
 }
-
