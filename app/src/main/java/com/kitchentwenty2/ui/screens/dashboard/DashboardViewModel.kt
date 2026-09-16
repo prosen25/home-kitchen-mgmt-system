@@ -5,13 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.kitchentwenty2.domain.model.DashboardNavigationItem
 import com.kitchentwenty2.domain.model.DashboardTab
 import com.kitchentwenty2.domain.model.DashboardUiState
-import com.kitchentwenty2.domain.model.FinancialSummary
 import com.kitchentwenty2.domain.repository.ExpenseRepository
 import com.kitchentwenty2.domain.repository.OrderRepository
-import com.kitchentwenty2.data.remote.firestore.FirestoreOrderRepository
-import com.kitchentwenty2.data.remote.firestore.FirestoreOrder
-import com.kitchentwenty2.domain.model.OrderSummaryItem
-import com.kitchentwenty2.domain.model.OrderStatus
 import com.kitchentwenty2.util.DateTimeUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -31,8 +26,7 @@ import javax.inject.Inject
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
-    private val expenseRepository: ExpenseRepository,
-    private val firestoreOrderRepository: FirestoreOrderRepository
+    private val expenseRepository: ExpenseRepository
 ) : ViewModel() {
 
     private val _selectedDateMillis = MutableStateFlow(System.currentTimeMillis())
@@ -66,44 +60,7 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    val uiState: StateFlow<DashboardUiState> = _selectedDateMillis.flatMapLatest { dateMillis ->
-        combine(
-            baseState,
-            firestoreOrderRepository.listenOrdersForDate(
-                DateTimeUtils.getStartOfDay(dateMillis),
-                DateTimeUtils.getEndOfDay(dateMillis)
-            )
-        ) { base, remoteOrders ->
-            if (remoteOrders.isNotEmpty()) {
-                val mergedOrders = remoteOrders.mapNotNull { ro ->
-                    try {
-                        val parsedOrderId = ro.id.toLongOrNull() ?: System.currentTimeMillis()
-                        val itemsSummary = ro.items.joinToString(", ") { "${it.quantity}x ${it.itemName}" }
-                        OrderSummaryItem(
-                            orderId = parsedOrderId,
-                            customerName = ro.customerSnapshot?.name ?: ro.customerId ?: "",
-                            customerPhone = ro.customerSnapshot?.mobileNumber ?: "",
-                            itemsSummary = itemsSummary,
-                            deliveryAddress = ro.customerSnapshot?.address ?: "",
-                            googleLocationUrl = ro.customerSnapshot?.googleLocationUrl,
-                            totalAmount = ro.totalAmount,
-                            outstandingDue = (ro.totalAmount - ro.totalCollected - ro.refundedAmount).coerceAtLeast(0.0),
-                            totalPaid = ro.totalCollected,
-                            status = when (ro.status.uppercase()) {
-                                "UNPAID" -> OrderStatus.UNPAID
-                                "FULLY_PAID" -> OrderStatus.FULLY_PAID
-                                "CANCELLED" -> OrderStatus.CANCELLED
-                                else -> OrderStatus.PARTIALLY_PAID
-                            }
-                        )
-                    } catch (_: Exception) {
-                        null
-                    }
-                }
-                base.copy(orders = mergedOrders)
-            } else base
-        }
-    }.stateIn(
+    val uiState: StateFlow<DashboardUiState> = baseState.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = DashboardUiState()

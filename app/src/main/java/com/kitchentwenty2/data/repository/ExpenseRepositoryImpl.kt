@@ -10,8 +10,12 @@ import com.kitchentwenty2.util.AppErrorLogger
 import com.kitchentwenty2.util.DateTimeUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -29,7 +33,7 @@ class ExpenseRepositoryImpl @Inject constructor(
     override fun getExpensesForDate(dateMillis: Long): Flow<List<ExpenseSummaryItem>> {
         val startOfDay = DateTimeUtils.getStartOfDay(dateMillis)
         val endOfDay = DateTimeUtils.getEndOfDay(dateMillis)
-        return expenseDao.getExpensesByDate(startOfDay, endOfDay)
+        return withRemoteExpenses(startOfDay, endOfDay, expenseDao.getExpensesByDate(startOfDay, endOfDay))
             .map { list -> list.map { it.toDomain() } }
             .flowOn(Dispatchers.IO)
     }
@@ -37,7 +41,7 @@ class ExpenseRepositoryImpl @Inject constructor(
     override fun getTotalExpensesForDate(dateMillis: Long): Flow<Double> {
         val startOfDay = DateTimeUtils.getStartOfDay(dateMillis)
         val endOfDay = DateTimeUtils.getEndOfDay(dateMillis)
-        return expenseDao.getTotalExpensesByDate(startOfDay, endOfDay)
+        return withRemoteExpenses(startOfDay, endOfDay, expenseDao.getTotalExpensesByDate(startOfDay, endOfDay))
             .flowOn(Dispatchers.IO)
     }
 
@@ -128,6 +132,36 @@ class ExpenseRepositoryImpl @Inject constructor(
                 createdBy = expense.createdBy
             )
         )
+    }
+
+    private fun <T> withRemoteExpenses(
+        startOfDay: Long,
+        endOfDay: Long,
+        local: Flow<T>
+    ): Flow<T> = channelFlow {
+        launch {
+            firestoreExpenseRepository.listenExpensesForDate(startOfDay, endOfDay)
+                .catch { errorLogger.logException(it, "ExpenseRepository.listenExpensesForDate") }
+                .collect { expenses ->
+                    expenses.forEach { expense ->
+                        val expenseId = expense.id.toLongOrNull()?.takeIf { it > 0 } ?: return@forEach
+                        val now = System.currentTimeMillis()
+                        expenseDao.insertExpense(
+                            ExpenseEntity(
+                                expenseId = expenseId,
+                                expenseDate = expense.expenseDate,
+                                category = expense.category,
+                                amount = expense.amount,
+                                notes = expense.notes,
+                                createdBy = expense.createdBy ?: "SYSTEM",
+                                createdDateTimeStamp = expense.createdAt?.toDate()?.time ?: now,
+                                modifiedDateTimeStamp = expense.modifiedAt?.toDate()?.time ?: now
+                            )
+                        )
+                    }
+                }
+        }
+        local.collect { send(it) }
     }
 
     private fun ExpenseEntity.toDomain(): ExpenseSummaryItem {

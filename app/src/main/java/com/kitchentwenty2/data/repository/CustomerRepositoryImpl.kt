@@ -9,8 +9,12 @@ import com.kitchentwenty2.domain.repository.CustomerRepository
 import com.kitchentwenty2.util.AppErrorLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -23,13 +27,13 @@ class CustomerRepositoryImpl @Inject constructor(
 ) : CustomerRepository {
 
     override fun searchCustomers(query: String): Flow<List<CustomerProfile>> {
-        return customerDao.searchCustomers(query)
+        return withRemoteCustomers(customerDao.searchCustomers(query))
             .map { list -> list.map { it.toDomain() } }
             .flowOn(Dispatchers.IO)
     }
 
     override fun getAllCustomers(): Flow<List<CustomerProfile>> {
-        return customerDao.getAllCustomers()
+        return withRemoteCustomers(customerDao.getAllCustomers())
             .map { list -> list.map { it.toDomain() } }
             .flowOn(Dispatchers.IO)
     }
@@ -145,6 +149,32 @@ class CustomerRepositoryImpl @Inject constructor(
                 createdBy = customer.createdBy
             )
         )
+    }
+
+    private fun withRemoteCustomers(local: Flow<List<CustomerEntity>>): Flow<List<CustomerEntity>> = channelFlow {
+        launch {
+            firestoreCustomerRepository.listenAllCustomers()
+                .catch { errorLogger.logException(it, "CustomerRepository.listenAllCustomers") }
+                .collect { customers ->
+                    customers.forEach { customer ->
+                        val customerId = customer.id.toLongOrNull()?.takeIf { it > 0 } ?: return@forEach
+                        val now = System.currentTimeMillis()
+                        customerDao.upsertSyncedCustomer(
+                            CustomerEntity(
+                                customerId = customerId,
+                                name = customer.name,
+                                mobileNumber = customer.mobileNumber,
+                                address = customer.address,
+                                googleLocationUrl = customer.googleLocationUrl,
+                                createdBy = customer.createdBy ?: "SYSTEM",
+                                createdDateTimeStamp = customer.createdAt?.toDate()?.time ?: now,
+                                modifiedDateTimeStamp = customer.modifiedAt?.toDate()?.time ?: now
+                            )
+                        )
+                    }
+                }
+        }
+        local.collect { send(it) }
     }
 
     private fun normalizeMobile(mobile: String?): String {

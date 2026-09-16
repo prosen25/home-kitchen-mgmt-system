@@ -37,10 +37,12 @@ data class FirestoreMenuItem(
 
 data class FirestoreOrderItem(
     val itemId: String = "",
+    val menuItemId: String? = null,
     val itemName: String = "",
     val unitPrice: Double = 0.0,
     val quantity: Int = 1,
-    val subtotal: Double = 0.0
+    val subtotal: Double = 0.0,
+    val isCustom: Boolean = false
 )
 
 data class FirestoreOrder(
@@ -49,6 +51,7 @@ data class FirestoreOrder(
     val customerSnapshot: FirestoreCustomer? = null,
     val orderDate: Long = 0L,
     val items: List<FirestoreOrderItem> = emptyList(),
+    val paymentLogs: List<FirestorePaymentLog> = emptyList(),
     val upfrontDiscount: Double = 0.0,
     val settlementDiscount: Double = 0.0,
     val advancePaid: Double = 0.0,

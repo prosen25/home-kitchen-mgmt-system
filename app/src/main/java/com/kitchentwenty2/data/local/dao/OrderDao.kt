@@ -31,11 +31,18 @@ interface OrderDao {
     @Query("SELECT * FROM orders WHERE orderId = :orderId LIMIT 1")
     suspend fun getOrderWithDetailsSnapshot(orderId: Long): OrderWithDetails?
 
+    @Transaction
+    @Query("SELECT * FROM orders ORDER BY orderId")
+    suspend fun getAllOrdersWithDetailsSnapshot(): List<OrderWithDetails>
+
     @Query("SELECT * FROM orders WHERE orderId = :orderId LIMIT 1")
     suspend fun getOrderById(orderId: Long): OrderEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrder(order: OrderEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertSyncedOrderIfAbsent(order: OrderEntity): Long
 
     @Update
     suspend fun updateOrder(order: OrderEntity)
@@ -65,6 +72,23 @@ interface OrderDao {
         return orderId
     }
 
+    @Transaction
+    suspend fun upsertSyncedOrder(
+        order: OrderEntity,
+        items: List<OrderItemEntity>,
+        paymentLogs: List<PaymentLogEntity>
+    ) {
+        if (insertSyncedOrderIfAbsent(order) == -1L) updateOrder(order)
+        if (items.isNotEmpty()) {
+            deleteOrderItemsByOrderId(order.orderId)
+            insertOrderItems(items)
+        }
+        if (paymentLogs.isNotEmpty()) {
+            deletePaymentLogsByOrderId(order.orderId)
+            paymentLogs.forEach { insertPaymentLog(it) }
+        }
+    }
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrderItems(items: List<OrderItemEntity>)
 
@@ -73,6 +97,9 @@ interface OrderDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPaymentLog(paymentLog: PaymentLogEntity): Long
+
+    @Query("DELETE FROM payment_logs WHERE orderId = :orderId")
+    suspend fun deletePaymentLogsByOrderId(orderId: Long)
 
     @Query("SELECT * FROM payment_logs WHERE orderId = :orderId ORDER BY paymentDate ASC")
     fun getPaymentLogsForOrder(orderId: Long): Flow<List<PaymentLogEntity>>

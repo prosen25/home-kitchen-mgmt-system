@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import com.kitchentwenty2.data.local.entity.CustomerEntity
 import kotlinx.coroutines.flow.Flow
@@ -33,8 +34,16 @@ interface CustomerDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCustomer(customer: CustomerEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertSyncedCustomerIfAbsent(customer: CustomerEntity): Long
+
     @Update
     suspend fun updateCustomer(customer: CustomerEntity)
+
+    @Transaction
+    suspend fun upsertSyncedCustomer(customer: CustomerEntity) {
+        if (insertSyncedCustomerIfAbsent(customer) == -1L) updateCustomer(customer)
+    }
 
     @Query("DELETE FROM customers WHERE customerId = :customerId")
     suspend fun deleteCustomerById(customerId: Long): Int

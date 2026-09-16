@@ -9,8 +9,12 @@ import com.kitchentwenty2.domain.repository.MenuRepository
 import com.kitchentwenty2.util.AppErrorLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -23,13 +27,13 @@ class MenuRepositoryImpl @Inject constructor(
 ) : MenuRepository {
 
     override fun getAllMenuItems(): Flow<List<MenuItemModel>> {
-        return menuItemDao.getAllMenuItems()
+        return withRemoteMenuItems(menuItemDao.getAllMenuItems())
             .map { list -> list.map { it.toDomain() } }
             .flowOn(Dispatchers.IO)
     }
 
     override fun searchMenuItems(query: String): Flow<List<MenuItemModel>> {
-        return menuItemDao.searchMenuItems(query)
+        return withRemoteMenuItems(menuItemDao.searchMenuItems(query))
             .map { list -> list.map { it.toDomain() } }
             .flowOn(Dispatchers.IO)
     }
@@ -101,6 +105,31 @@ class MenuRepositoryImpl @Inject constructor(
                 createdBy = item.createdBy
             )
         )
+    }
+
+    private fun withRemoteMenuItems(local: Flow<List<MenuItemEntity>>): Flow<List<MenuItemEntity>> = channelFlow {
+        launch {
+            firestoreMenuRepository.listenAllMenuItems()
+                .catch { errorLogger.logException(it, "MenuRepository.listenAllMenuItems") }
+                .collect { menuItems ->
+                    menuItems.forEach { menuItem ->
+                        val itemId = menuItem.id.toLongOrNull()?.takeIf { it > 0 } ?: return@forEach
+                        val now = System.currentTimeMillis()
+                        menuItemDao.insertMenuItem(
+                            MenuItemEntity(
+                                menuItemId = itemId,
+                                name = menuItem.name,
+                                description = menuItem.description,
+                                defaultPrice = menuItem.defaultPrice,
+                                createdBy = menuItem.createdBy ?: "SYSTEM",
+                                createdDateTimeStamp = menuItem.createdAt?.toDate()?.time ?: now,
+                                modifiedDateTimeStamp = menuItem.modifiedAt?.toDate()?.time ?: now
+                            )
+                        )
+                    }
+                }
+        }
+        local.collect { send(it) }
     }
 
     private fun MenuItemEntity.toDomain() = MenuItemModel(
