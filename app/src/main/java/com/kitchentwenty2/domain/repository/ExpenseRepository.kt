@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.Flow
 interface ExpenseRepository {
     fun getExpensesForDate(dateMillis: Long): Flow<List<ExpenseSummaryItem>>
     fun getTotalExpensesForDate(dateMillis: Long): Flow<Double>
+    fun getTotalExpensesBetween(startDateMillis: Long, endDateMillis: Long): Flow<Double>
     suspend fun addExpense(dateMillis: Long, category: String, amount: Double, notes: String?): Long
     suspend fun deleteExpense(expenseId: Long)
 

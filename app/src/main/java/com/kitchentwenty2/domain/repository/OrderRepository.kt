@@ -4,6 +4,7 @@ import com.kitchentwenty2.domain.model.FinancialSummary
 import com.kitchentwenty2.domain.model.OrderDetailUiState
 import com.kitchentwenty2.domain.model.OrderFormState
 import com.kitchentwenty2.domain.model.OrderSummaryItem
+import com.kitchentwenty2.domain.model.ProfitAndLossReport
 import kotlinx.coroutines.flow.Flow
 
 interface OrderRepository {
@@ -14,4 +15,5 @@ interface OrderRepository {
     suspend fun settleOrder(orderId: Long, settlementDiscount: Double)
     suspend fun cancelOrder(orderId: Long, refundAmount: Double)
     fun getDailyFinancialSummary(dateMillis: Long): Flow<FinancialSummary>
+    fun getProfitAndLossReport(startDateMillis: Long, endDateMillis: Long): Flow<ProfitAndLossReport>
 }

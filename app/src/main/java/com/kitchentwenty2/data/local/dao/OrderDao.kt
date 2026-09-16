@@ -18,6 +18,12 @@ data class DailyRevenueCalculation(
     val totalOrderValue: Double = 0.0
 )
 
+data class RangeOrderFinancialCalculation(
+    val grossSales: Double,
+    val totalDiscounts: Double,
+    val totalRefunds: Double
+)
+
 @Dao
 interface OrderDao {
     @Transaction
@@ -113,6 +119,16 @@ interface OrderDao {
         WHERE orderDate >= :startOfDay AND orderDate <= :endOfDay
     """)
     fun getDailyRevenueTotals(startOfDay: Long, endOfDay: Long): Flow<DailyRevenueCalculation>
+
+    @Query("""
+        SELECT
+            COALESCE(SUM(CASE WHEN status != 'CANCELLED' THEN totalAmount ELSE 0.0 END), 0.0) as grossSales,
+            COALESCE(SUM(CASE WHEN status != 'CANCELLED' THEN upfrontDiscount + settlementDiscount ELSE 0.0 END), 0.0) as totalDiscounts,
+            COALESCE(SUM(refundedAmount), 0.0) as totalRefunds
+        FROM orders
+        WHERE orderDate >= :startDate AND orderDate <= :endDate
+    """)
+    fun getRangeFinancialTotals(startDate: Long, endDate: Long): Flow<RangeOrderFinancialCalculation>
 
     @Query("SELECT COUNT(*) FROM orders")
     suspend fun getOrderCount(): Int

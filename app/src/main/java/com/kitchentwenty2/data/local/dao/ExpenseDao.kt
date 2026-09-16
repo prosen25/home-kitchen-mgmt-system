@@ -16,6 +16,9 @@ interface ExpenseDao {
     @Query("SELECT COALESCE(SUM(amount), 0.0) FROM expenses WHERE expenseDate >= :startOfDay AND expenseDate <= :endOfDay")
     fun getTotalExpensesByDate(startOfDay: Long, endOfDay: Long): Flow<Double>
 
+    @Query("SELECT COALESCE(SUM(amount), 0.0) FROM expenses WHERE expenseDate >= :startDate AND expenseDate <= :endDate")
+    fun getTotalExpensesBetween(startDate: Long, endDate: Long): Flow<Double>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertExpense(expense: ExpenseEntity): Long
 

@@ -45,6 +45,14 @@ class ExpenseRepositoryImpl @Inject constructor(
             .flowOn(Dispatchers.IO)
     }
 
+    override fun getTotalExpensesBetween(startDateMillis: Long, endDateMillis: Long): Flow<Double> {
+        return withRemoteExpenses(
+            startDateMillis,
+            endDateMillis,
+            expenseDao.getTotalExpensesBetween(startDateMillis, endDateMillis)
+        ).flowOn(Dispatchers.IO)
+    }
+
     override suspend fun addExpense(
         dateMillis: Long,
         category: String,
