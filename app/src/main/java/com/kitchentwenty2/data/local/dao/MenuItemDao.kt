@@ -20,9 +20,6 @@ interface MenuItemDao {
     @Query("SELECT COUNT(*) FROM menu_items")
     suspend fun getMenuItemCount(): Int
 
-    @Query("SELECT * FROM menu_items ORDER BY menuItemId")
-    suspend fun getAllMenuItemsSnapshot(): List<MenuItemEntity>
-
     @Query("SELECT * FROM menu_items WHERE name LIKE '%' || :query || '%' ORDER BY name LIMIT 50")
     fun searchMenuItems(query: String): Flow<List<MenuItemEntity>>
 

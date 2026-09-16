@@ -31,10 +31,6 @@ interface OrderDao {
     @Query("SELECT * FROM orders WHERE orderId = :orderId LIMIT 1")
     suspend fun getOrderWithDetailsSnapshot(orderId: Long): OrderWithDetails?
 
-    @Transaction
-    @Query("SELECT * FROM orders ORDER BY orderId")
-    suspend fun getAllOrdersWithDetailsSnapshot(): List<OrderWithDetails>
-
     @Query("SELECT * FROM orders WHERE orderId = :orderId LIMIT 1")
     suspend fun getOrderById(orderId: Long): OrderEntity?
 

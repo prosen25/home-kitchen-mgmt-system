@@ -31,6 +31,4 @@ interface ExpenseDao {
     @Query("SELECT COUNT(*) FROM expenses")
     suspend fun getExpenseCount(): Int
 
-    @Query("SELECT * FROM expenses ORDER BY expenseId")
-    suspend fun getAllExpensesSnapshot(): List<ExpenseEntity>
 }

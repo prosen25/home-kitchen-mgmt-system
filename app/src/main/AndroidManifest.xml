@@ -23,11 +23,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".ui.debug.FirestoreBackfillActivity"
-            android:excludeFromRecents="true"
-            android:exported="true"
-            android:permission="android.permission.DUMP" />
     </application>
 
 </manifest>
