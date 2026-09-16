@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -172,6 +174,7 @@ fun ExpenseEntryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .imePadding()
                 .background(MaterialTheme.colorScheme.background),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -277,7 +280,9 @@ fun ExpenseEntryScreen(
                                 DropdownMenu(
                                     expanded = isCategoryDropdownOpen,
                                     onDismissRequest = { isCategoryDropdownOpen = false },
-                                    modifier = Modifier.fillMaxWidth(0.9f)
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.9f)
+                                        .heightIn(max = 240.dp)
                                 ) {
                                     ExpenseCategories.forEach { categoryItem ->
                                         DropdownMenuItem(

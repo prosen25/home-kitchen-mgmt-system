@@ -25,7 +25,7 @@ captures/
 .fake
 
 # Firebase service account files
-*/google-services.json
+*/google-services*.json
 
 # Environment variable files
 .env
