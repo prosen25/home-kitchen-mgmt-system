@@ -344,6 +344,7 @@ class OrderRepositoryImpl @Inject constructor(
                 netRevenue = netRevenue,
                 totalExpenses = totalExpenses,
                 netProfit = netProfit,
+                totalOrderValue = revenueCalc.totalOrderValue,
                 isProjected = isProjected
             )
         }.flowOn(Dispatchers.IO)

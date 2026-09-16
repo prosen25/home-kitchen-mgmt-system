@@ -23,6 +23,10 @@ val RevenueGreen = Color(0xFF16A34A)        // Fresh Emerald
 val RevenueGreenContainer = Color(0xFFDCFCE7)
 val RevenueGreenOnContainer = Color(0xFF14532D)
 
+val OrderValueBlue = Color(0xFF2563EB)
+val OrderValueBlueContainer = Color(0xFFDBEAFE)
+val OrderValueBlueOnContainer = Color(0xFF1E3A8A)
+
 val ExpenseRed = Color(0xFFDC2626)          // Crimson / Rose Red
 val ExpenseRedContainer = Color(0xFFFEE2E2)
 val ExpenseRedOnContainer = Color(0xFF7F1D1D)
@@ -63,4 +67,3 @@ val SurfaceVariantDark = Color(0xFF334155)
 val OnSurfaceDark = Color(0xFFF8FAFC)
 val OnSurfaceVariantDark = Color(0xFF94A3B8)
 val OutlineDark = Color(0xFF475569)
-
