@@ -330,12 +330,8 @@ fun AppNavigation(
             ReportsHistoryScreen(
                 uiState = uiState,
                 onBackClick = { navController.popBackStack() },
-                onPreviousDayClick = viewModel::onPreviousDay,
-                onNextDayClick = viewModel::onNextDay,
-                onDateSelected = viewModel::onDateSelected,
-                onOrderClick = { orderId ->
-                    navController.navigate(Screen.OrderDetail.createRoute(orderId))
-                }
+                onPresetSelected = viewModel::onPresetSelected,
+                onDateRangeSelected = viewModel::onDateRangeSelected
             )
         }
 

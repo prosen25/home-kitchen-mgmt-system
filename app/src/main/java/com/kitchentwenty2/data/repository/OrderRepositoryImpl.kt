@@ -17,6 +17,7 @@ import com.kitchentwenty2.domain.model.OrderItemForm
 import com.kitchentwenty2.domain.model.OrderStatus
 import com.kitchentwenty2.domain.model.OrderSummaryItem
 import com.kitchentwenty2.domain.model.PaymentRecord
+import com.kitchentwenty2.domain.model.ProfitAndLossReport
 import com.kitchentwenty2.domain.repository.CustomerRepository
 import com.kitchentwenty2.domain.repository.ExpenseRepository
 import com.kitchentwenty2.domain.repository.OrderRepository
@@ -346,6 +347,26 @@ class OrderRepositoryImpl @Inject constructor(
                 netProfit = netProfit,
                 totalOrderValue = revenueCalc.totalOrderValue,
                 isProjected = isProjected
+            )
+        }.flowOn(Dispatchers.IO)
+    }
+
+    override fun getProfitAndLossReport(startDateMillis: Long, endDateMillis: Long): Flow<ProfitAndLossReport> {
+        return combine(
+            withRemoteOrders(
+                remote = firestoreOrderRepository.listenOrdersForDate(startDateMillis, endDateMillis),
+                local = orderDao.getRangeFinancialTotals(startDateMillis, endDateMillis)
+            ),
+            expenseRepository.getTotalExpensesBetween(startDateMillis, endDateMillis)
+        ) { orderTotals, expenses ->
+            val netRevenue = orderTotals.grossSales - orderTotals.totalRefunds
+            ProfitAndLossReport(
+                grossSales = orderTotals.grossSales,
+                totalDiscounts = orderTotals.totalDiscounts,
+                totalRefunds = orderTotals.totalRefunds,
+                netRevenue = netRevenue,
+                totalExpenses = expenses,
+                netProfitLoss = netRevenue - expenses
             )
         }.flowOn(Dispatchers.IO)
     }

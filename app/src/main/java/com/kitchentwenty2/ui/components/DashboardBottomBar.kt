@@ -97,14 +97,14 @@ fun DashboardBottomBar(
             )
         )
 
-        // Destination 4: Reports / History
+        // Destination 4: Profit & Loss reports
         NavigationBarItem(
             selected = selectedItem == DashboardNavigationItem.REPORTS,
             onClick = { onItemSelected(DashboardNavigationItem.REPORTS) },
             icon = {
                 Icon(
                     imageVector = Icons.Default.Assessment,
-                    contentDescription = "Reports / History"
+                    contentDescription = "Profit and Loss reports"
                 )
             },
             label = {
