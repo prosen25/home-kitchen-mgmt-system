@@ -11,10 +11,17 @@ data class ExpenseCategoryItem(
 )
 
 val ExpenseCategories = listOf(
-    ExpenseCategoryItem("groceries", "Groceries", "ShoppingCart"),
-    ExpenseCategoryItem("packaging", "Packaging", "ReceiptLong"),
+    ExpenseCategoryItem("bigbasket", "Bigbasket", "ShoppingCart"),
+    ExpenseCategoryItem("blinkit", "Blinkit", "ShoppingCart"),
+    ExpenseCategoryItem("fish", "Fish", "ShoppingCart"),
+    ExpenseCategoryItem("flipkart", "Flipkart", "ShoppingCart"),
     ExpenseCategoryItem("gas", "Gas", "LocalGasStation"),
-    ExpenseCategoryItem("other", "Other", "Payments")
+    ExpenseCategoryItem("groceries", "Groceries", "ShoppingCart"),
+    ExpenseCategoryItem("helping_hand", "Helping Hand", "Payments"),
+    ExpenseCategoryItem("packaging", "Packaging", "ReceiptLong"),
+    ExpenseCategoryItem("other", "Other", "Payments"),
+    ExpenseCategoryItem("vegetable", "Vegetable", "ShoppingCart"),
+    ExpenseCategoryItem("zepto", "Zepto", "ShoppingCart")
 )
 
 data class ExpenseFormState(
@@ -23,4 +30,3 @@ data class ExpenseFormState(
     val amount: String = "",
     val notes: String = ""
 )
-

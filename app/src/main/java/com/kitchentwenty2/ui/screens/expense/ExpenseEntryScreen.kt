@@ -284,7 +284,9 @@ fun ExpenseEntryScreen(
                                         .fillMaxWidth(0.9f)
                                         .heightIn(max = 240.dp)
                                 ) {
-                                    ExpenseCategories.forEach { categoryItem ->
+                                    ExpenseCategories
+                                        .sortedBy { it.name.lowercase(Locale.getDefault()) }
+                                        .forEach { categoryItem ->
                                         DropdownMenuItem(
                                             text = {
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -394,4 +396,3 @@ fun ExpenseEntryScreenPreview() {
         ExpenseEntryScreen()
     }
 }
-
