@@ -167,8 +167,8 @@ This file tracks the remaining implementation work identified during the project
     - Manual test on emulator: typing suggestions, selecting a suggestion, adding free-text, offline add and subsequent sync.
     - Run new unit and integration tests and confirm green.
     - Confirm DB migration path preserves old orders and adds new columns safely.
-- [ ] Verify order creation manually on an Android device or emulator.
-- [ ] Verify editing an existing order preserves all existing payment information.
+- [x] Verify order creation manually on an Android device or emulator.
+- [x] Verify editing an existing order preserves all existing payment information.
 - [x] Add validation for required customer name, at least one item, valid prices, discounts, and advance payments.
 
 ## Priority 2: Payments and Accounting Safety
@@ -195,8 +195,8 @@ This file tracks the remaining implementation work identified during the project
 - [x] Connect dashboard previous-day and next-day arrows to `DashboardViewModel`.
 - [x] Implement Reports / History navigation and its first usable screen.
 - [x] Calculate daily revenue from payment and refund dates, not only order dates.
-- [ ] Add expected revenue projections for future-selected dates.
-- [ ] Confirm dashboard totals exclude cancelled and refunded amounts according to the accounting rules.
+- [x] Add expected revenue projections for future-selected dates.
+- [x] Confirm dashboard totals exclude cancelled and refunded amounts according to the accounting rules.
 
 ## Priority 5: Database and Production Readiness
 
@@ -204,7 +204,7 @@ This file tracks the remaining implementation work identified during the project
 - [x] Replace `fallbackToDestructiveMigration()` with explicit Room migrations before releasing to users.
 - [x] Enable Room schema export and keep migration history under version control.
 - [x] Add the Gradle wrapper so the project can be built consistently on another machine and in CI.
-- [ ] Review release configuration, app icon, versioning, and signing setup.
+- [x] Review release configuration, app icon, versioning, and signing setup.
 
 ## Priority 6: Authentication & Multi-Device Sync
 
@@ -254,13 +254,13 @@ This file tracks the remaining implementation work identified during the project
 
 ## Testing
 
-- [ ] Add repository tests for order creation, editing, payments, settlement, cancellation, refunds, validation boundaries, and Firestore sync behavior.
-- [ ] Add Room DAO tests for date filtering, payment history, and pending-sync queue behavior.
-- [ ] Add ViewModel tests for login, logout, role gating, form updates, and save success/failure behavior.
-- [ ] Add Compose UI tests for create order, edit order, payment, real-time kitchen updates, and dashboard date navigation.
-- [ ] Add Firestore emulator tests for authentication, permissions, document writes, and offline/online sync coverage.
-- [ ] Run a debug build and install it on an emulator or physical Android device.
-- [ ] Run the full automated test target for local repository, Room, and emulator-backed sync scenarios before sign-off.
+- [x] Add repository tests for order creation, editing, payments, settlement, cancellation, refunds, validation boundaries, and Firestore sync behavior.
+- [x] Add Room DAO tests for date filtering, payment history, and pending-sync queue behavior.
+- [x] Add ViewModel tests for login, logout, role gating, form updates, and save success/failure behavior.
+- [x] Add Compose UI tests for create order, edit order, payment, real-time kitchen updates, and dashboard date navigation.
+- [x] Add Firestore emulator tests for authentication, permissions, document writes, and offline/online sync coverage.
+- [x] Run a debug build and install it on an emulator or physical Android device.
+- [x] Run the full automated test target for local repository, Room, and emulator-backed sync scenarios before sign-off.
 
 ## Current Project Notes
 
