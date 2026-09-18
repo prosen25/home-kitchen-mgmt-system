@@ -63,8 +63,10 @@ import com.kitchentwenty2.ui.theme.OrangePrimary
 @Composable
 fun MenuSetupScreen(
     menuItems: List<MenuItemModel> = emptyList(),
-    onAddMenuItem: (String, Double) -> Unit = { _, _ -> },
-    onUpdateMenuItem: (MenuItemModel) -> Unit = {},
+    onAddMenuItem: (String, Double, () -> Unit) -> Unit = { _, _, onSuccess -> onSuccess() },
+    onUpdateMenuItem: (MenuItemModel, () -> Unit) -> Unit = { _, onSuccess -> onSuccess() },
+    addNameError: String? = null,
+    editNameError: String? = null,
     onDeleteMenuItem: (Long) -> Unit = {},
     onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -152,6 +154,8 @@ fun MenuSetupScreen(
                                 label = { Text("Dish Name") },
                                 placeholder = { Text("e.g. Chicken Biryani") },
                                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                                isError = addNameError != null,
+                                supportingText = addNameError?.let { { Text(it) } },
                                 singleLine = true,
                                 modifier = Modifier.weight(1.8f),
                                 shape = RoundedCornerShape(10.dp)
@@ -175,9 +179,10 @@ fun MenuSetupScreen(
                             onClick = {
                                 val price = newPriceInput.toDoubleOrNull() ?: 0.0
                                 if (newDishName.isNotBlank() && price > 0) {
-                                    onAddMenuItem(newDishName, price)
-                                    newDishName = ""
-                                    newPriceInput = ""
+                                    onAddMenuItem(newDishName, price) {
+                                        newDishName = ""
+                                        newPriceInput = ""
+                                    }
                                 }
                             },
                             shape = RoundedCornerShape(10.dp),
@@ -309,6 +314,8 @@ fun MenuSetupScreen(
                         onValueChange = { editDishName = it },
                         label = { Text("Dish Name") },
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                        isError = editNameError != null,
+                        supportingText = editNameError?.let { { Text(it) } },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -332,8 +339,7 @@ fun MenuSetupScreen(
                                     name = editDishName.trim(),
                                     defaultPrice = price
                                 )
-                            )
-                            itemToEditIndex = null
+                            ) { itemToEditIndex = null }
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)

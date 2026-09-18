@@ -38,6 +38,12 @@ class MenuRepositoryImpl @Inject constructor(
             .flowOn(Dispatchers.IO)
     }
 
+    override suspend fun existsByName(name: String, excludeId: Long): Boolean {
+        return withContext(Dispatchers.IO) {
+            menuItemDao.existsByName(name.trim(), excludeId)
+        }
+    }
+
     override suspend fun addMenuItem(
         name: String,
         defaultPrice: Double,

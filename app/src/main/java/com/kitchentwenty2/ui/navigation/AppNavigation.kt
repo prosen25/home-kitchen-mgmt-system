@@ -297,11 +297,15 @@ fun AppNavigation(
         composable(Screen.MenuSetup.route) {
             val viewModel: MenuSetupViewModel = hiltViewModel()
             val menuItems by viewModel.menuItems.collectAsState()
+            val addNameError by viewModel.addNameError.collectAsState()
+            val editNameError by viewModel.editNameError.collectAsState()
 
             MenuSetupScreen(
                 menuItems = menuItems,
                 onAddMenuItem = viewModel::addMenuItem,
                 onUpdateMenuItem = viewModel::updateMenuItem,
+                addNameError = addNameError,
+                editNameError = editNameError,
                 onDeleteMenuItem = viewModel::deleteMenuItem,
                 onBackClick = { navController.popBackStack() }
             )
