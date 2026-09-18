@@ -42,6 +42,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.kitchentwenty2.domain.model.ProfitAndLossReport
 import com.kitchentwenty2.ui.components.formatCurrency
+import com.kitchentwenty2.ui.theme.LossRed
+import com.kitchentwenty2.ui.theme.ProfitGreen
 import com.kitchentwenty2.util.DateTimeUtils
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -149,7 +151,11 @@ private fun ProfitAndLossCard(report: ProfitAndLossReport) {
                 "Net Profit / Loss",
                 report.netProfitLoss,
                 emphasized = true,
-                valueColor = if (report.netProfitLoss >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                valueColor = when {
+                    report.netProfitLoss > 0 -> ProfitGreen
+                    report.netProfitLoss < 0 -> LossRed
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
             )
         }
     }
