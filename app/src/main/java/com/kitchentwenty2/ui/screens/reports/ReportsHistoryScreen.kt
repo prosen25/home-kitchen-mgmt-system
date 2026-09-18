@@ -41,7 +41,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.kitchentwenty2.domain.model.ProfitAndLossReport
+import com.kitchentwenty2.domain.model.DashboardNavigationItem
 import com.kitchentwenty2.ui.components.formatCurrency
+import com.kitchentwenty2.ui.components.DashboardBottomBar
 import com.kitchentwenty2.ui.theme.LossRed
 import com.kitchentwenty2.ui.theme.ProfitGreen
 import com.kitchentwenty2.util.DateTimeUtils
@@ -53,6 +55,7 @@ fun ReportsHistoryScreen(
     onBackClick: () -> Unit = {},
     onPresetSelected: (ReportsRangePreset) -> Unit = {},
     onDateRangeSelected: (Long?, Long?) -> Unit = { _, _ -> },
+    onNavigate: (DashboardNavigationItem) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
@@ -71,6 +74,12 @@ fun ReportsHistoryScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
+            )
+        },
+        bottomBar = {
+            DashboardBottomBar(
+                selectedItem = DashboardNavigationItem.REPORTS,
+                onItemSelected = onNavigate
             )
         }
     ) { innerPadding ->

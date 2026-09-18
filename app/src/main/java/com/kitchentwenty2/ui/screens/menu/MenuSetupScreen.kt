@@ -55,7 +55,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kitchentwenty2.domain.model.MenuItemModel
+import com.kitchentwenty2.domain.model.DashboardNavigationItem
 import com.kitchentwenty2.ui.components.formatCurrency
+import com.kitchentwenty2.ui.components.DashboardBottomBar
 import com.kitchentwenty2.ui.theme.KitchenTwenty2Theme
 import com.kitchentwenty2.ui.theme.OrangePrimary
 
@@ -69,6 +71,7 @@ fun MenuSetupScreen(
     editNameError: String? = null,
     onDeleteMenuItem: (Long) -> Unit = {},
     onBackClick: () -> Unit = {},
+    onNavigate: (DashboardNavigationItem) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val menuList = menuItems
@@ -104,6 +107,12 @@ fun MenuSetupScreen(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
+            )
+        },
+        bottomBar = {
+            DashboardBottomBar(
+                selectedItem = DashboardNavigationItem.MASTER_MENU,
+                onItemSelected = onNavigate
             )
         }
     ) { innerPadding ->

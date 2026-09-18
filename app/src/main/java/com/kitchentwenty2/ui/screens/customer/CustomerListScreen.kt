@@ -54,6 +54,8 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.kitchentwenty2.domain.model.CustomerProfile
+import com.kitchentwenty2.domain.model.DashboardNavigationItem
+import com.kitchentwenty2.ui.components.DashboardBottomBar
 import com.kitchentwenty2.ui.theme.KitchenTwenty2Theme
 import com.kitchentwenty2.ui.theme.OrangePrimary
 
@@ -66,6 +68,7 @@ fun CustomerListScreen(
     onUpdateCustomer: (customerId: Long, name: String, phone: String?, address: String?, locationUrl: String?) -> Unit = { _, _, _, _, _ -> },
     onDeleteCustomer: (Long) -> Unit = {},
     onBackClick: () -> Unit = {},
+    onNavigate: (DashboardNavigationItem) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -90,6 +93,12 @@ fun CustomerListScreen(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
+            )
+        },
+        bottomBar = {
+            DashboardBottomBar(
+                selectedItem = DashboardNavigationItem.CUSTOMERS,
+                onItemSelected = onNavigate
             )
         }
     ) { innerPadding ->
