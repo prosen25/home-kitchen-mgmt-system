@@ -41,6 +41,7 @@ import com.kitchentwenty2.ui.screens.order.OrderDetailViewModel
 import com.kitchentwenty2.ui.screens.reports.ReportsHistoryScreen
 import com.kitchentwenty2.ui.screens.reports.ReportsHistoryViewModel
 import com.kitchentwenty2.util.DateTimeUtils
+import com.kitchentwenty2.util.InvoicePdfGenerator
 
 sealed class Screen(val route: String) {
     data object Login : Screen("login")
@@ -290,6 +291,17 @@ fun AppNavigation(
                     },
                     onEditOrder = { orderId ->
                         navController.navigate(Screen.EditOrder.createRoute(orderId))
+                    },
+                    onGenerateInvoice = {
+                        orderState?.let { order ->
+                            val invoiceUri = InvoicePdfGenerator.generate(context, order)
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "application/pdf"
+                                putExtra(Intent.EXTRA_STREAM, invoiceUri)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Share Invoice"))
+                        }
                     }
                 )
             } else {

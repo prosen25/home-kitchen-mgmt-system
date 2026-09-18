@@ -92,6 +92,7 @@ fun OrderDetailScreen(
     onSettleSuccess: (Double) -> Unit = {},
     onCancelOrderSuccess: (Double) -> Unit = {},
     onEditOrder: (Long) -> Unit = {},
+    onGenerateInvoice: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var status by remember { mutableStateOf(orderState.status) }
@@ -275,6 +276,17 @@ fun OrderDetailScreen(
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text("Share to Partner", style = MaterialTheme.typography.labelSmall)
                             }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = onGenerateInvoice,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(imageVector = Icons.Default.Payments, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Generate Invoice", style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }
@@ -806,4 +818,3 @@ fun OrderDetailScreenPreview() {
         OrderDetailScreen()
     }
 }
-
