@@ -465,6 +465,7 @@ fun OrderCreateEditScreen(
                         onValueChange = { onFormStateChanged(formState.copy(address = it)) },
                         label = { Text("Delivery Address") },
                         placeholder = { Text("House number, street name, landmarks...") },
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
                         minLines = 2,
                         maxLines = 4,
                         modifier = Modifier.fillMaxWidth(),

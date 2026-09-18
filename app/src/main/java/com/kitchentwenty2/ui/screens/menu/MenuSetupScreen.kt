@@ -50,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -150,6 +151,7 @@ fun MenuSetupScreen(
                                 onValueChange = { newDishName = it },
                                 label = { Text("Dish Name") },
                                 placeholder = { Text("e.g. Chicken Biryani") },
+                                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
                                 singleLine = true,
                                 modifier = Modifier.weight(1.8f),
                                 shape = RoundedCornerShape(10.dp)
@@ -306,6 +308,7 @@ fun MenuSetupScreen(
                         value = editDishName,
                         onValueChange = { editDishName = it },
                         label = { Text("Dish Name") },
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -354,4 +357,3 @@ fun MenuSetupScreenPreview() {
         MenuSetupScreen()
     }
 }
-
