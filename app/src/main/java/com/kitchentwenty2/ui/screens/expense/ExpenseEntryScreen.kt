@@ -62,6 +62,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.kitchentwenty2.domain.model.ExpenseCategories
@@ -343,6 +344,7 @@ fun ExpenseEntryScreen(
                                 value = notesInput,
                                 onValueChange = { notesInput = it },
                                 placeholder = { Text("e.g. 10kg basmati rice, 50x packaging containers...") },
+                                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
                                 minLines = 3,
                                 maxLines = 5,
                                 modifier = Modifier.fillMaxWidth(),
