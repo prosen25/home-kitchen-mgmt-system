@@ -20,6 +20,9 @@ interface MenuItemDao {
     @Query("SELECT COUNT(*) FROM menu_items")
     suspend fun getMenuItemCount(): Int
 
+    @Query("SELECT EXISTS(SELECT 1 FROM menu_items WHERE LOWER(TRIM(name)) = LOWER(TRIM(:name)) AND menuItemId != :excludeId)")
+    suspend fun existsByName(name: String, excludeId: Long = 0L): Boolean
+
     @Query("SELECT * FROM menu_items WHERE name LIKE '%' || :query || '%' ORDER BY name LIMIT 50")
     fun searchMenuItems(query: String): Flow<List<MenuItemEntity>>
 
