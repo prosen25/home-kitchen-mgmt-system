@@ -100,6 +100,20 @@ fun AppNavigation(
         context.startActivity(Intent.createChooser(intent, "Share Delivery Info"))
     }
 
+    val navigateToPrimary: (DashboardNavigationItem) -> Unit = { destination ->
+        val route = when (destination) {
+            DashboardNavigationItem.HOME -> Screen.Dashboard.route
+            DashboardNavigationItem.MASTER_MENU -> Screen.MenuSetup.route
+            DashboardNavigationItem.CUSTOMERS -> Screen.Customers.route
+            DashboardNavigationItem.REPORTS -> Screen.ReportsHistory.route
+        }
+        navController.navigate(route) {
+            popUpTo(Screen.Dashboard.route) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
     val startDestination = if (FirebaseAuth.getInstance().currentUser != null) {
         Screen.Dashboard.route
     } else {
@@ -174,12 +188,7 @@ fun AppNavigation(
                 },
 
                 onNavigate = { destination ->
-                    when (destination) {
-                        DashboardNavigationItem.HOME -> { /* Already on dashboard */ }
-                        DashboardNavigationItem.MASTER_MENU -> navController.navigate(Screen.MenuSetup.route)
-                        DashboardNavigationItem.CUSTOMERS -> navController.navigate(Screen.Customers.route)
-                        DashboardNavigationItem.REPORTS -> navController.navigate(Screen.ReportsHistory.route)
-                    }
+                    navigateToPrimary(destination)
                 },
                 onPreviousDayClick = viewModel::onPreviousDay,
                 onNextDayClick = viewModel::onNextDay,
@@ -307,7 +316,8 @@ fun AppNavigation(
                 addNameError = addNameError,
                 editNameError = editNameError,
                 onDeleteMenuItem = viewModel::deleteMenuItem,
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                onNavigate = navigateToPrimary
             )
         }
 
@@ -322,7 +332,8 @@ fun AppNavigation(
                 onAddCustomer = viewModel::addCustomer,
                 onUpdateCustomer = viewModel::updateCustomer,
                 onDeleteCustomer = viewModel::deleteCustomer,
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                onNavigate = navigateToPrimary
             )
         }
 
@@ -335,7 +346,8 @@ fun AppNavigation(
                 uiState = uiState,
                 onBackClick = { navController.popBackStack() },
                 onPresetSelected = viewModel::onPresetSelected,
-                onDateRangeSelected = viewModel::onDateRangeSelected
+                onDateRangeSelected = viewModel::onDateRangeSelected,
+                onNavigate = navigateToPrimary
             )
         }
 
